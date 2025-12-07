@@ -1,0 +1,72 @@
+# =====================================
+# English Tutor Voice Agent - Git Ignore
+# =====================================
+
+# Environment Variables (КРИТИЧНО!)
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =====================================
+# ВАЖНО: Всегда проверяйте что .env НЕ закоммичен!
+# Используйте: git status
+# =====================================
