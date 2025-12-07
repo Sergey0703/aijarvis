@@ -19,5 +19,8 @@ COPY agent.py .
 # Переменные окружения (будут автоматически инжектированы Hugging Face Spaces)
 ENV PYTHONUNBUFFERED=1
 
+# Экспонируем порт 7860 (стандарт HF Spaces для HTTP)
+EXPOSE 7860
+
 # Запускаем агента в production режиме
 CMD ["python", "agent.py", "start"]
