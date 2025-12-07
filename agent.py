@@ -10,7 +10,7 @@ from livekit.agents import (
     WorkerOptions,
     cli,
 )
-from livekit.plugins import google, noise_cancellation
+from livekit.plugins import google
 
 # ========== ЛОГИРОВАНИЕ (для Hugging Face Spaces) ==========
 logging.basicConfig(
@@ -118,13 +118,12 @@ async def entrypoint(ctx: JobContext):
     # Настраиваем события
     setup_session_events(session)
 
-    # Запускаем сессию с видео поддержкой и шумоподавлением
+    # Запускаем сессию с видео поддержкой
     await session.start(
         room=ctx.room,
         agent=EnglishTutorAgent(),
         room_input_options=RoomInputOptions(
             video_enabled=True,  # Включаем видео
-            noise_cancellation=noise_cancellation.BVC(),  # Шумоподавление
         ),
     )
 
