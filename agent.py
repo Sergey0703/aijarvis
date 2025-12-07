@@ -10,7 +10,6 @@ from livekit.agents import (
     JobContext,
     RoomInputOptions,
     WorkerOptions,
-    cli,
 )
 from livekit.plugins import google
 
@@ -140,9 +139,6 @@ async def entrypoint(ctx: JobContext):
 
     logger.info("🚀 Starting English Tutor Agent (MVP - Hardcoded Text)")
 
-    # Запускаем HTTP health сервер в фоне
-    asyncio.create_task(start_health_server())
-
     # Создаем пустую сессию (LLM живет в Agent)
     session = AgentSession()
 
@@ -175,4 +171,15 @@ async def entrypoint(ctx: JobContext):
 
 # ========== MAIN ==========
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+    # Запускаем HTTP health сервер в фоновом потоке
+    async def run_with_health_server():
+        # Стартуем health сервер
+        await start_health_server()
+
+        # Запускаем LiveKit CLI (блокирующий вызов)
+        # Используем worker для запуска entrypoint при подключении
+        from livekit.agents import Worker
+        worker = Worker(WorkerOptions(entrypoint_fnc=entrypoint))
+        await worker.run()
+
+    asyncio.run(run_with_health_server())
