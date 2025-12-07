@@ -10,7 +10,7 @@ from livekit.agents import (
     WorkerOptions,
     cli,
 )
-from livekit.plugins import google
+from livekit.plugins import google, noise_cancellation
 
 # ========== ЛОГИРОВАНИЕ (для Hugging Face Spaces) ==========
 logging.basicConfig(
@@ -39,7 +39,7 @@ I am ready to discuss this with you. What do you think?
 
 # ========== СИСТЕМНЫЙ ПРОМПТ ==========
 AGENT_INSTRUCTION = f"""
-You are an English Tutor.
+You are an English Tutor with video capability.
 Your task is to read the lesson text below to the user clearly and slowly.
 
 LESSON TEXT:
@@ -49,6 +49,9 @@ After reading, engage in a conversation about it.
 Correct the user if they make grammar mistakes.
 Keep responses conversational and natural for voice interaction.
 Speak clearly and at a moderate pace suitable for English learners.
+
+You can see and analyze video/images when users share their screen or camera.
+If you see anything on video, acknowledge it and use it in conversation.
 """
 
 SESSION_INSTRUCTION = """
@@ -115,10 +118,14 @@ async def entrypoint(ctx: JobContext):
     # Настраиваем события
     setup_session_events(session)
 
-    # Запускаем сессию
+    # Запускаем сессию с видео поддержкой и шумоподавлением
     await session.start(
         room=ctx.room,
         agent=EnglishTutorAgent(),
+        room_input_options=RoomInputOptions(
+            video_enabled=True,  # Включаем видео
+            noise_cancellation=noise_cancellation.BVC(),  # Шумоподавление
+        ),
     )
 
     # Подключаемся к комнате
