@@ -16,7 +16,7 @@ google-genai==1.28.0
 google-auth==2.40.3
 google-api-core==2.25.1
 
-# ---- WEB & HTTP (для LiveKit) ----
+# ---- WEB & HTTP (для LiveKit + Health Endpoint) ----
 aiohttp==3.12.15
 websockets==15.0.1
 

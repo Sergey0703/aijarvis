@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import os
+from datetime import datetime
+from aiohttp import web
 from livekit import agents
 from livekit.agents import (
     Agent,
@@ -106,11 +108,40 @@ def setup_session_events(session: AgentSession):
 
     logger.info("✅ Event handlers configured")
 
+# ========== HTTP HEALTH ENDPOINT (для предотвращения засыпания HF Spaces) ==========
+agent_start_time = datetime.now()
+
+async def health_check(request):
+    """Health check endpoint для мониторинга и keep-alive"""
+    uptime = datetime.now() - agent_start_time
+    return web.json_response({
+        "status": "healthy",
+        "service": "english-tutor-agent",
+        "uptime_seconds": int(uptime.total_seconds()),
+        "model": "gemini-live-2.5-flash-preview",
+        "timestamp": datetime.now().isoformat()
+    })
+
+async def start_health_server():
+    """Запуск HTTP сервера на порту 7860 (стандарт HF Spaces)"""
+    app = web.Application()
+    app.router.add_get('/health', health_check)
+    app.router.add_get('/', health_check)  # Root тоже отдает health
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 7860)
+    await site.start()
+    logger.info("✅ HTTP Health server started on port 7860")
+
 # ========== MAIN ENTRYPOINT ==========
 async def entrypoint(ctx: JobContext):
     """Точка входа агента"""
 
     logger.info("🚀 Starting English Tutor Agent (MVP - Hardcoded Text)")
+
+    # Запускаем HTTP health сервер в фоне
+    asyncio.create_task(start_health_server())
 
     # Создаем пустую сессию (LLM живет в Agent)
     session = AgentSession()
