@@ -1,6 +1,7 @@
 import logging
 import os
 import feedparser
+import requests
 from datetime import datetime
 from livekit.agents import (
     Agent,
@@ -27,6 +28,9 @@ if not google_api_key:
     raise ValueError("GOOGLE_API_KEY обязателен")
 
 logger.info("✅ Google API Key найден")
+
+# ========== N8N WEBHOOK CONFIGURATION ==========
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "http://localhost:5678/webhook/get-news")
 
 # ========== RSS ИСТОЧНИКИ ==========
 RSS_FEEDS = [
@@ -74,6 +78,41 @@ def fetch_latest_news(feed_url: str = None) -> dict:
 
     except Exception as e:
         logger.error(f"❌ Failed to fetch RSS: {e}")
+        return None
+
+def fetch_news_from_n8n() -> dict:
+    """
+    Получает случайную обработанную новость из N8N webhook
+
+    Returns:
+        dict: News object или None если ошибка
+    """
+    try:
+        logger.info(f"📡 Fetching news from N8N webhook: {N8N_WEBHOOK_URL}")
+        response = requests.get(N8N_WEBHOOK_URL, timeout=10)
+
+        if response.status_code == 200:
+            news = response.json()
+
+            # Проверка на ошибку от N8N
+            if news.get('error') or news.get('fallback'):
+                logger.warning(f"⚠️ N8N returned error: {news.get('error', 'No news available')}")
+                return None
+
+            logger.info(f"✅ Got news from N8N: {news.get('title', '')[:50]}...")
+            return news
+        else:
+            logger.error(f"❌ N8N webhook failed: HTTP {response.status_code}")
+            return None
+
+    except requests.exceptions.Timeout:
+        logger.error("❌ N8N webhook timeout")
+        return None
+    except requests.exceptions.ConnectionError:
+        logger.error("❌ Cannot connect to N8N webhook (N8N may not be ready yet)")
+        return None
+    except Exception as e:
+        logger.error(f"❌ Failed to fetch from N8N: {e}")
         return None
 
 def format_lesson_from_news(news: dict) -> str:
@@ -190,8 +229,14 @@ async def entrypoint(ctx: JobContext):
     """Точка входа агента"""
     logger.info("🚀 Starting English Tutor Agent")
 
-    # Получаем свежую новость из RSS
-    news = fetch_latest_news()
+    # Пытаемся получить новость из N8N сначала
+    news = fetch_news_from_n8n()
+
+    # Если N8N не ответил, используем прямой RSS парсинг
+    if not news:
+        logger.info("📰 Falling back to direct RSS fetch")
+        news = fetch_latest_news()
+
     lesson_text = format_lesson_from_news(news)
 
     # Создаем кастомный промпт с новостью

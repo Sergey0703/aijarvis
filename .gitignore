@@ -52,6 +52,10 @@ logs/
 .claude/
 claude.md
 
+# N8N Local Data
+n8n_data/
+n8n_workflows/*.json
+
 # Jupyter Notebooks
 .ipynb_checkpoints
 
