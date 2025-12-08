@@ -246,4 +246,7 @@ After that, ask them what they think about the topic.
 
 # ========== MAIN ==========
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+    cli.run_app(WorkerOptions(
+        entrypoint_fnc=entrypoint,
+        port=7860  # Hugging Face Spaces health check port
+    ))
