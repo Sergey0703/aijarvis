@@ -12,6 +12,7 @@ from livekit.agents import (
     cli,
 )
 from livekit.plugins import google
+from pymongo import MongoClient
 
 # ========== ЛОГИРОВАНИЕ ==========
 logging.basicConfig(
@@ -24,10 +25,41 @@ logger = logging.getLogger("english-tutor")
 # ========== ВАЛИДАЦИЯ КЛЮЧЕЙ ==========
 google_api_key = os.getenv("GOOGLE_API_KEY")
 if not google_api_key:
-    logger.error("❌ GOOGLE_API_KEY не найден")
-    raise ValueError("GOOGLE_API_KEY обязателен")
+    logger.error("GOOGLE_API_KEY not found")
+    raise ValueError("GOOGLE_API_KEY is required")
 
-logger.info("✅ Google API Key найден")
+logger.info("Google API Key found")
+
+# ========== MONGODB CONFIGURATION ==========
+MONGODB_URI = os.getenv("MONGODB_URI")
+MONGODB_DB = os.getenv("MONGODB_DB", "cluster0")
+MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION", "words")
+
+def get_vocabulary_words(count: int = 5):
+    """Get random untrained words from MongoDB vocabulary"""
+    if not MONGODB_URI:
+        logger.warning("MongoDB not configured, skipping vocabulary")
+        return []
+
+    try:
+        client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=10000)
+        db = client[MONGODB_DB]
+        collection = db[MONGODB_COLLECTION]
+
+        # Get untrained words
+        words = list(collection.find({"traini": False}).limit(count))
+
+        # Convert ObjectId to string
+        for word in words:
+            if "_id" in word:
+                word["_id"] = str(word["_id"])
+
+        client.close()
+        logger.info(f"Retrieved {len(words)} vocabulary words from MongoDB")
+        return words
+    except Exception as e:
+        logger.error(f"Failed to get vocabulary words: {e}")
+        return []
 
 # ========== N8N WEBHOOK CONFIGURATION ==========
 N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "http://localhost:5678/webhook/get-news")
@@ -56,11 +88,11 @@ def fetch_latest_news(feed_url: str = None) -> dict:
         feed_url = RSS_FEEDS[0]  # По умолчанию TechCrunch
 
     try:
-        logger.info(f"📰 Fetching news from: {feed_url}")
+        logger.info(f"Fetching news from: {feed_url}")
         feed = feedparser.parse(feed_url)
 
         if not feed.entries:
-            logger.warning("⚠️ No entries found in RSS feed")
+            logger.warning("No entries found in RSS feed")
             return None
 
         # Берем первую (самую свежую) новость
@@ -73,11 +105,11 @@ def fetch_latest_news(feed_url: str = None) -> dict:
             'published': entry.get('published', 'Unknown date')
         }
 
-        logger.info(f"✅ Got news: {news['title'][:50]}...")
+        logger.info(f"Got news: {news['title'][:50]}...")
         return news
 
     except Exception as e:
-        logger.error(f"❌ Failed to fetch RSS: {e}")
+        logger.error(f"Failed to fetch RSS: {e}")
         return None
 
 def fetch_news_from_n8n() -> dict:
@@ -88,7 +120,7 @@ def fetch_news_from_n8n() -> dict:
         dict: News object или None если ошибка
     """
     try:
-        logger.info(f"📡 Fetching news from N8N webhook: {N8N_WEBHOOK_URL}")
+        logger.info(f"Fetching news from N8N webhook: {N8N_WEBHOOK_URL}")
         response = requests.get(N8N_WEBHOOK_URL, timeout=10)
 
         if response.status_code == 200:
@@ -96,23 +128,23 @@ def fetch_news_from_n8n() -> dict:
 
             # Проверка на ошибку от N8N
             if news.get('error') or news.get('fallback'):
-                logger.warning(f"⚠️ N8N returned error: {news.get('error', 'No news available')}")
+                logger.warning(f"N8N returned error: {news.get('error', 'No news available')}")
                 return None
 
-            logger.info(f"✅ Got news from N8N: {news.get('title', '')[:50]}...")
+            logger.info(f"Got news from N8N: {news.get('title', '')[:50]}...")
             return news
         else:
-            logger.error(f"❌ N8N webhook failed: HTTP {response.status_code}")
+            logger.error(f"N8N webhook failed: HTTP {response.status_code}")
             return None
 
     except requests.exceptions.Timeout:
-        logger.error("❌ N8N webhook timeout")
+        logger.error("N8N webhook timeout")
         return None
     except requests.exceptions.ConnectionError:
-        logger.error("❌ Cannot connect to N8N webhook (N8N may not be ready yet)")
+        logger.error("Cannot connect to N8N webhook (N8N may not be ready yet)")
         return None
     except Exception as e:
-        logger.error(f"❌ Failed to fetch from N8N: {e}")
+        logger.error(f"Failed to fetch from N8N: {e}")
         return None
 
 def format_lesson_from_news(news: dict) -> str:
@@ -195,7 +227,7 @@ class EnglishTutorAgent(Agent):
                 api_key=google_api_key,
             ),
         )
-        logger.info("✅ EnglishTutorAgent инициализирован")
+        logger.info("EnglishTutorAgent initialized")
 
 # ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
 def setup_session_events(session: AgentSession):
@@ -220,21 +252,21 @@ def setup_session_events(session: AgentSession):
     @session.on("error")
     def on_error(event):
         error = getattr(event, 'error', str(event))
-        logger.error(f"❌ ERROR: {error}")
+        logger.error(f"ERROR: {error}")
 
-    logger.info("✅ Event handlers configured")
+    logger.info("Event handlers configured")
 
 # ========== MAIN ENTRYPOINT ==========
 async def entrypoint(ctx: JobContext):
     """Точка входа агента"""
-    logger.info("🚀 Starting English Tutor Agent")
+    logger.info("Starting English Tutor Agent")
 
     # Пытаемся получить новость из N8N сначала
     news = fetch_news_from_n8n()
 
     # Если N8N не ответил, используем прямой RSS парсинг
     if not news:
-        logger.info("📰 Falling back to direct RSS fetch")
+        logger.info("Falling back to direct RSS fetch")
         news = fetch_latest_news()
 
     lesson_text = format_lesson_from_news(news)
@@ -279,15 +311,15 @@ After that, ask them what they think about the topic.
     )
 
     await ctx.connect()
-    logger.info("✅ Agent connected to LiveKit room")
+    logger.info("Agent connected to LiveKit room")
 
     try:
         await session.generate_reply(instructions=custom_session_instruction)
-        logger.info("✅ Initial greeting delivered")
+        logger.info("Initial greeting delivered")
     except Exception as e:
-        logger.warning(f"⚠️ Greeting failed: {e}")
+        logger.warning(f"Greeting failed: {e}")
 
-    logger.info("🎙️ Agent ready")
+    logger.info("Agent ready")
 
 # ========== MAIN ==========
 if __name__ == "__main__":
