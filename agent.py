@@ -30,6 +30,37 @@ if not google_api_key:
 
 logger.info("Google API Key found")
 
+# ========== N8N WEBHOOK CONFIGURATION ==========
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL")
+
+# ========== ФУНКЦИЯ ПОЛУЧЕНИЯ УРОКА ==========
+async def fetch_lesson_from_n8n() -> str:
+    """
+    Получает готовый текст урока из n8n
+    """
+    if not N8N_WEBHOOK_URL:
+        logger.warning("N8N_WEBHOOK_URL not configured, using fallback")
+        return None
+
+    import aiohttp
+    try:
+        logger.info(f"Fetching lesson from n8n: {N8N_WEBHOOK_URL}")
+        async with aiohttp.ClientSession() as session:
+            async with session.get(N8N_WEBHOOK_URL, timeout=10) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    # Предполагаем, что n8n отдает { "content": "..." } или { "text": "..." }
+                    lesson = data.get('content') or data.get('text')
+                    if lesson:
+                        logger.info("Lesson fetched from n8n successfully")
+                        return lesson
+                
+                logger.warning(f"n8n returned status {response.status}")
+                return None
+    except Exception as e:
+        logger.error(f"Failed to fetch from n8n: {e}")
+        return None
+
 # ========== СИСТЕМНЫЙ ПРОМПТ ==========
 AGENT_INSTRUCTION = """
 You are an English Tutor with video capability.
@@ -96,7 +127,39 @@ async def entrypoint(ctx: JobContext):
     """Точка входа агента"""
     logger.info("Starting English Tutor Agent")
 
+    # Пытаемся получить урок из n8n
+    lesson_text = await fetch_lesson_from_n8n()
+
+    # СИСТЕМНЫЙ ПРОМПТ (динамический, если есть новость)
+    if lesson_text:
+        custom_instruction = f"""
+You are an English Tutor with video capability.
+Your task is to read the lesson text below to the user clearly and slowly.
+
+LESSON TEXT:
+"{lesson_text.strip()}"
+
+After reading, engage in a conversation about it.
+Correct the user if they make grammar mistakes.
+Keep responses conversational and natural for voice interaction.
+Speak clearly and at a moderate pace suitable for English learners.
+
+You can see and analyze video/images when users share their screen or camera.
+If you see anything on video, acknowledge it and use it in conversation.
+"""
+        session_instruction = """
+Greet the user warmly.
+Tell them you're ready to help them practice English.
+Then read the topic you've prepared for them.
+After that, ask them what they think about it.
+"""
+    else:
+        custom_instruction = AGENT_INSTRUCTION
+        session_instruction = SESSION_INSTRUCTION
+
     agent = EnglishTutorAgent()
+    agent._instructions = custom_instruction  # Обновляем инструкции для этой сессии
+    
     session = AgentSession()
     setup_session_events(session)
 
@@ -112,7 +175,7 @@ async def entrypoint(ctx: JobContext):
     logger.info("Agent connected to LiveKit room")
 
     try:
-        await session.generate_reply(instructions=SESSION_INSTRUCTION)
+        await session.generate_reply(instructions=session_instruction)
         logger.info("Initial greeting delivered")
     except Exception as e:
         logger.warning(f"Greeting failed: {e}")
