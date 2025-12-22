@@ -1,0 +1,15 @@
+services:
+  agent:
+    build: .
+    container_name: english-tutor-agent
+    restart: always
+    env_file:
+      - .env
+    # No ports needed for standard worker, but can be added for health checks
+    # ports:
+    #   - "7860:7860"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
