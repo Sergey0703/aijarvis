@@ -58,7 +58,7 @@
 ### 2. Запуск через Docker Compose
 Это самый простой способ:
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 Эта команда соберет образ и запустит контейнер в фоновом режиме.
 
