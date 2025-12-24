@@ -13,6 +13,8 @@ from livekit.agents import (
     cli,
 )
 from livekit.plugins import google
+from aitools.orchestrator import AGENT_TOOLS
+from aitools.news import fetch_raw_news
 
 # ========== ЛОГИРОВАНИЕ ==========
 logging.basicConfig(
@@ -30,53 +32,26 @@ if not google_api_key:
 
 logger.info("Google API Key found")
 
-# ========== N8N WEBHOOK CONFIGURATION ==========
-N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL")
-
-# ========== ФУНКЦИЯ ПОЛУЧЕНИЯ УРОКА ==========
-async def fetch_lesson_from_n8n() -> str:
-    """
-    Получает готовый текст урока из n8n
-    """
-    if not N8N_WEBHOOK_URL:
-        logger.warning("N8N_WEBHOOK_URL not configured, using fallback")
-        return None
-
-    import aiohttp
-    try:
-        logger.info(f"Fetching lesson from n8n: {N8N_WEBHOOK_URL}")
-        async with aiohttp.ClientSession() as session:
-            async with session.get(N8N_WEBHOOK_URL, timeout=10) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    # Предполагаем, что n8n отдает { "content": "..." } или { "text": "..." }
-                    lesson = data.get('content') or data.get('text')
-                    if lesson:
-                        logger.info("Lesson fetched from n8n successfully")
-                        return lesson
-                
-                logger.warning(f"n8n returned status {response.status}")
-                return None
-    except Exception as e:
-        logger.error(f"Failed to fetch from n8n: {e}")
-        return None
+# ========== REMOVED LEGACY FETCH ==========
+# fetch_lesson_from_n8n moved to aitools.news.fetch_raw_news
 
 # ========== СИСТЕМНЫЙ ПРОМПТ ==========
 AGENT_INSTRUCTION = """
-You are an English Tutor with video capability.
-Your task is to help the user practice English.
-Correct the user if they make grammar mistakes.
-Keep responses conversational and natural for voice interaction.
-Speak clearly and at a moderate pace suitable for English learners.
+You are a friendly English Tutor named Aoede. Your goal is to help the user practice English.
 
-You can see and analyze video/images when users share their screen or camera.
-If you see anything on video, acknowledge it and use it in conversation.
+STRICT RULES:
+1. NEVER USE BOLD TEXT. No asterisks ** allowed.
+2. NEVER USE HEADERS or titles like "Thinking" or "Assessing".
+3. NEVER talk about your own internal logic, design, or tools.
+4. Just speak naturally, like a real person on a phone call.
+
+If you have news topics, list the titles naturally. For example: "I found a few interesting stories for our lesson today. First, there is... Second... Which one sounds interesting?"
+Keep summaries very short (3-4 sentences). Always ask the user a question after a summary.
+If you do not have news, just start a friendly conversation about their day.
 """
 
 SESSION_INSTRUCTION = """
-Greet the user warmly.
-Tell them you're ready to help them practice English.
-Ask them what they would like to talk about today.
+Hello! Greet the user naturally. If you see news titles below, list them and ask which one to discuss. If there are no news items, just say hello and ask how they are. Do not use bold text or headers.
 """
 
 # ========== GEMINI AGENT CLASS ==========
@@ -92,6 +67,7 @@ class EnglishTutorAgent(Agent):
                 temperature=0.7,
                 api_key=google_api_key,
             ),
+            tools=AGENT_TOOLS,
         )
         logger.info("EnglishTutorAgent initialized")
 
@@ -127,32 +103,12 @@ async def entrypoint(ctx: JobContext):
     """Точка входа агента"""
     logger.info("Starting English Tutor Agent")
 
-    # Пытаемся получить урок из n8n
-    lesson_text = await fetch_lesson_from_n8n()
-
-    # СИСТЕМНЫЙ ПРОМПТ (динамический, если есть новость)
+    # Dynamic instructions based on news availability
+    lesson_text = await fetch_raw_news()
+    
     if lesson_text:
-        custom_instruction = f"""
-You are an English Tutor with video capability.
-Your task is to read the lesson text below to the user clearly and slowly.
-
-LESSON TEXT:
-"{lesson_text.strip()}"
-
-After reading, engage in a conversation about it.
-Correct the user if they make grammar mistakes.
-Keep responses conversational and natural for voice interaction.
-Speak clearly and at a moderate pace suitable for English learners.
-
-You can see and analyze video/images when users share their screen or camera.
-If you see anything on video, acknowledge it and use it in conversation.
-"""
-        session_instruction = """
-Greet the user warmly.
-Tell them you're ready to help them practice English.
-Then read the topic you've prepared for them.
-After that, ask them what they think about it.
-"""
+        custom_instruction = f"{AGENT_INSTRUCTION}\n\nTODAY'S NEWS FOR THIS LESSON:\n{lesson_text.strip()}"
+        session_instruction = SESSION_INSTRUCTION
     else:
         custom_instruction = AGENT_INSTRUCTION
         session_instruction = SESSION_INSTRUCTION
