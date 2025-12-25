@@ -3,6 +3,7 @@ import os
 import aiohttp
 import re
 from livekit.agents import function_tool, RunContext
+from .logging_helper import session_log
 
 logger = logging.getLogger("news-tool")
 
@@ -44,10 +45,14 @@ async def fetch_news_data() -> list:
                         return [data]
                     return []
                 else:
-                    logger.warning(f"n8n returned status {response.status}")
+                    msg = f"n8n returned status {response.status}"
+                    logger.warning(msg)
+                    session_log.add_log("WARNING", msg, {"url": webhook_url})
                     return None
     except Exception as e:
-        logger.error(f"Failed to fetch news: {e}")
+        msg = f"Failed to fetch news: {e}"
+        logger.error(msg)
+        session_log.add_log("ERROR", msg)
         return None
 
 async def fetch_raw_news() -> str:
@@ -57,10 +62,10 @@ async def fetch_raw_news() -> str:
     """
     items = await fetch_news_data()
     if items is None:
-        logger.warning("No news items received (items is None)")
+        session_log.add_log("ERROR", "News items is None (Service Down)")
         return "News service is currently unavailable."
     
-    logger.info(f"Processing {len(items)} news items from n8n")
+    session_log.add_log("INFO", f"Fetched {len(items)} news items from n8n")
     if not items:
         return "No news available at the moment."
 

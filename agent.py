@@ -12,9 +12,12 @@ from livekit.agents import (
     WorkerOptions,
     cli,
 )
+from datetime import datetime
 from livekit.plugins import google
 from aitools.orchestrator import AGENT_TOOLS
 from aitools.news import fetch_raw_news
+from aitools.logging_helper import session_log
+from aitools.email import send_direct_email
 
 # ========== ЛОГИРОВАНИЕ ==========
 logging.basicConfig(
@@ -39,15 +42,16 @@ logger.info("Google API Key found")
 AGENT_INSTRUCTION = """
 You are a friendly English Tutor named Aoede. Your goal is to help the user practice English.
 
-STRICT RULES:
-1. NEVER USE BOLD TEXT. No asterisks ** allowed.
-2. NEVER USE HEADERS or titles like "Thinking" or "Assessing".
-3. NEVER talk about your own internal logic, design, or tools.
-4. Just speak naturally, like a real person on a phone call.
+CRITICAL VOICE RULES (STRICT):
+1. NEVER USE BOLD TEXT (**). 
+2. NEVER USE HEADERS OR TITLES (e.g., # Header, ## Title).
+3. NEVER USE LABELS like "Assessing the Input:", "Thinking:", or "Response:".
+4. Speak only in plain text. No markdown. No special formatting.
+5. Just speak naturally, like a real person on a phone call.
 
-If you have news topics, list the titles naturally. For example: "I found a few interesting stories for our lesson today. First, there is... Second... Which one sounds interesting?"
-Keep summaries very short (3-4 sentences). Always ask the user a question after a summary.
-If you do not have news, just start a friendly conversation about their day.
+If you have news topics, list the titles naturally. Example: "I found a few stories. First, there's... Second... Which one sounds interesting?"
+Keep summaries short (3-4 sentences). Always ask a question after a summary.
+If you don't have news, just start a friendly conversation.
 """
 
 SESSION_INSTRUCTION = """
@@ -133,10 +137,25 @@ async def entrypoint(ctx: JobContext):
     try:
         await session.generate_reply(instructions=session_instruction)
         logger.info("Initial greeting delivered")
+        
+        # Keep the agent alive while the room is connected
+        # JobContext automatically closes when disconnect events are processed,
+        # but we need to stay in this function to hit the 'finally' block.
+        while ctx.room.is_connected():
+            await asyncio.sleep(1)
+            
     except Exception as e:
-        logger.warning(f"Greeting failed: {e}")
-
-    logger.info("Agent ready")
+        logger.warning(f"Session encountered an error: {e}")
+    finally:
+        logger.info("Session ended. Sending session report...")
+        report = session_log.get_summary()
+        # We await it here in finally to ensure it finishes before job exits
+        await send_direct_email(
+            subject=f"English Tutor Session Report: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            body=report
+        )
+        session_log.clear()
+        logger.info("Final report cleanup done.")
 
 # ========== MAIN ==========
 if __name__ == "__main__":
