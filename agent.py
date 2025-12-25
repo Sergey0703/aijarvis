@@ -105,17 +105,19 @@ def setup_session_events(session: AgentSession):
 # ========== MAIN ENTRYPOINT ==========
 async def entrypoint(ctx: JobContext):
     """Точка входа агента"""
-    logger.info("Starting English Tutor Agent")
+    # 0. Clear logs from any previous "zombie" session in the same worker process
+    session_log.clear()
+    logger.info("Starting English Tutor Agent - Session Log Reset")
 
     # Dynamic instructions based on news availability
     lesson_text = await fetch_raw_news()
     
     if lesson_text:
         custom_instruction = f"{AGENT_INSTRUCTION}\n\nTODAY'S NEWS FOR THIS LESSON:\n{lesson_text.strip()}"
-        session_instruction = SESSION_INSTRUCTION
     else:
         custom_instruction = AGENT_INSTRUCTION
-        session_instruction = SESSION_INSTRUCTION
+    
+    session_instruction = SESSION_INSTRUCTION
 
     agent = EnglishTutorAgent()
     agent._instructions = custom_instruction  # Обновляем инструкции для этой сессии
@@ -138,24 +140,27 @@ async def entrypoint(ctx: JobContext):
         await session.generate_reply(instructions=session_instruction)
         logger.info("Initial greeting delivered")
         
-        # Keep the agent alive while the room is connected
-        # JobContext automatically closes when disconnect events are processed,
-        # but we need to stay in this function to hit the 'finally' block.
+        # Keep the agent alive while the room is connected AND there are participants
+        # We exit as soon as the user leaves to send the report promptly
         while ctx.room.is_connected():
+            remote_participants = [p for p in ctx.room.remote_participants.values()]
+            if not remote_participants:
+                logger.info("All participants left. Exiting session loop.")
+                break
             await asyncio.sleep(1)
             
     except Exception as e:
         logger.warning(f"Session encountered an error: {e}")
     finally:
-        logger.info("Session ended. Sending session report...")
+        logger.info("Cleanly ending session. Sending session report...")
         report = session_log.get_summary()
-        # We await it here in finally to ensure it finishes before job exits
+        # Explicitly await the email send before the job process potentially dies
         await send_direct_email(
             subject=f"English Tutor Session Report: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             body=report
         )
         session_log.clear()
-        logger.info("Final report cleanup done.")
+        logger.info("Session report sent and log cleared.")
 
 # ========== MAIN ==========
 if __name__ == "__main__":
