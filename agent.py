@@ -105,11 +105,25 @@ def setup_session_events(session: AgentSession):
 # ========== MAIN ENTRYPOINT ==========
 async def entrypoint(ctx: JobContext):
     """Точка входа агента"""
-    # 0. Clear logs from any previous "zombie" session in the same worker process
+    # 0. Clear logs at the start of every connection
     session_log.clear()
     logger.info("Starting English Tutor Agent - Session Log Reset")
 
-    # Dynamic instructions based on news availability
+    # 1. Define the report sending logic as a shutdown callback
+    async def send_report():
+        logger.info("Job is shutting down. Compiled report will be sent.")
+        report = session_log.get_summary()
+        await send_direct_email(
+            subject=f"English Tutor Session Report: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            body=report
+        )
+        session_log.clear()
+        logger.info("Session report sent successfully during shutdown.")
+
+    # Register the callback with the JobContext (the official way)
+    ctx.add_shutdown_callback(send_report)
+
+    # 2. Setup the agent and fetch initial news
     lesson_text = await fetch_raw_news()
     
     if lesson_text:
@@ -120,10 +134,14 @@ async def entrypoint(ctx: JobContext):
     session_instruction = SESSION_INSTRUCTION
 
     agent = EnglishTutorAgent()
-    agent._instructions = custom_instruction  # Обновляем инструкции для этой сессии
+    agent._instructions = custom_instruction
     
     session = AgentSession()
     setup_session_events(session)
+
+    # 3. Connect and start the session
+    await ctx.connect()
+    logger.info("Agent connected to LiveKit room")
 
     await session.start(
         room=ctx.room,
@@ -133,34 +151,14 @@ async def entrypoint(ctx: JobContext):
         ),
     )
 
-    await ctx.connect()
-    logger.info("Agent connected to LiveKit room")
-
     try:
         await session.generate_reply(instructions=session_instruction)
         logger.info("Initial greeting delivered")
-        
-        # Keep the agent alive while the room is connected AND there are participants
-        # We exit as soon as the user leaves to send the report promptly
-        while ctx.room.is_connected():
-            remote_participants = [p for p in ctx.room.remote_participants.values()]
-            if not remote_participants:
-                logger.info("All participants left. Exiting session loop.")
-                break
-            await asyncio.sleep(1)
-            
     except Exception as e:
-        logger.warning(f"Session encountered an error: {e}")
-    finally:
-        logger.info("Cleanly ending session. Sending session report...")
-        report = session_log.get_summary()
-        # Explicitly await the email send before the job process potentially dies
-        await send_direct_email(
-            subject=f"English Tutor Session Report: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-            body=report
-        )
-        session_log.clear()
-        logger.info("Session report sent and log cleared.")
+        logger.warning(f"Initial greeting failed: {e}")
+
+    # No loop needed here. The framework keeps the job alive while the room is connected.
+    # The shutdown callback registered above will handle the email at the right time.
 
 # ========== MAIN ==========
 if __name__ == "__main__":
