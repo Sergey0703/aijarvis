@@ -70,11 +70,16 @@ async def fetch_raw_news() -> str:
         return "No news available at the moment."
 
     formatted_news = []
+    titles = []
     for i, item in enumerate(items, 1):
         title = item.get('title', 'No Title')
+        titles.append(title)
         text = item.get('text', '')
         summary = summarize_text(text, 4)
         formatted_news.append(f"{i}. TITLE: {title}\n   SUMMARY: {summary}\n")
+
+    # Add titles to session log for the report
+    session_log.add_log("INFO", f"News Topics: {', '.join(titles)}")
 
     return "\n".join(formatted_news)
 
