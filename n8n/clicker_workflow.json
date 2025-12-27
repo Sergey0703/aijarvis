@@ -1,5 +1,5 @@
 {
-    "name": "Smart Funnel: Stage 2 (The Clicker)",
+    "name": "Smart Funnel: Stage 2 (The Clicker) - FIXED",
     "nodes": [
         {
             "parameters": {
@@ -42,14 +42,14 @@
             "id": "mongo-find-sieved",
             "credentials": {
                 "mongoDb": {
-                    "id": "YOUR_MONGO_CREDENTIAL_ID"
+                    "id": "p5lVP30sDORJCo8v"
                 }
             }
         },
         {
             "parameters": {
-                "chatId": "YOUR_TELEGRAM_CHAT_ID",
-                "text": "=Found a new word in today's news:\n\n🇬🇧 *{{ $json.word }}*\n🇷🇺 {{ $json.translate }}\n\nMove to active practice?",
+                "chatId": "YOUR_CHAT_ID",
+                "text": "=🇬🇧 *{{ $json.word }}*\n🇷🇺 {{ $json.translate }}\n\nMove to exercise?",
                 "replyMarkup": "inline_keyboard",
                 "inlineKeyboard": {
                     "rows": [
@@ -81,7 +81,7 @@
             "id": "tg-send-id",
             "credentials": {
                 "telegramApi": {
-                    "id": "YOUR_TG_CREDENTIAL_ID"
+                    "id": "YOUR_TG_CRED_ID"
                 }
             }
         },
@@ -101,13 +101,13 @@
             "id": "tg-trigger-id",
             "credentials": {
                 "telegramApi": {
-                    "id": "YOUR_TG_CREDENTIAL_ID"
+                    "id": "YOUR_TG_CRED_ID"
                 }
             }
         },
         {
             "parameters": {
-                "jsCode": "const data = items[0].json.callback_query.data;\nconst [action, id] = data.split('|');\nreturn [{ json: { action, id } }];"
+                "jsCode": "const data = items[0].json.callback_query.data;\nconst [action, id] = data.split('|');\n// IMPORTANT: use _id with underscore for MongoDB\nreturn [{ json: { action, _id: id } }];"
             },
             "name": "Parse Callback",
             "type": "n8n-nodes-base.code",
@@ -120,43 +120,47 @@
         },
         {
             "parameters": {
+                "mode": "manual",
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "assign-stage",
+                            "name": "stage",
+                            "value": "={{ $json.action == 'checked' ? 'checked' : 'new' }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "includeOtherInputFields": true,
+                "options": {}
+            },
+            "id": "set-node-id",
+            "name": "Prepare Stage Update",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                780,
+                460
+            ]
+        },
+        {
+            "parameters": {
                 "operation": "update",
                 "collection": "words",
                 "updateKey": "_id",
-                "fields": "stage",
-                "updateFields": "={\n  \"$set\": {\n    \"stage\": \"{{ $json.action == 'checked' ? 'checked' : 'new' }}\"\n  }\n}"
+                "fields": "stage"
             },
             "name": "Update Word Stage",
             "type": "n8n-nodes-base.mongoDb",
             "typeVersion": 1,
             "position": [
-                780,
+                980,
                 460
             ],
             "id": "mongo-update-stage",
             "credentials": {
                 "mongoDb": {
-                    "id": "YOUR_MONGO_CREDENTIAL_ID"
-                }
-            }
-        },
-        {
-            "parameters": {
-                "chatId": "={{ $node[\"Telegram Callback Trigger\"].json.callback_query.message.chat.id }}",
-                "text": "=Done! Word is now {{ $json.action == 'checked' ? 'Active' : 'Skipped' }}.",
-                "replyToMessageId": "={{ $node[\"Telegram Callback Trigger\"].json.callback_query.message.message_id }}"
-            },
-            "name": "Confirm Update",
-            "type": "n8n-nodes-base.telegram",
-            "typeVersion": 1.1,
-            "position": [
-                980,
-                460
-            ],
-            "id": "tg-confirm-id",
-            "credentials": {
-                "telegramApi": {
-                    "id": "YOUR_TG_CREDENTIAL_ID"
+                    "id": "p5lVP30sDORJCo8v"
                 }
             }
         }
@@ -199,18 +203,18 @@
             "main": [
                 [
                     {
-                        "node": "Update Word Stage",
+                        "node": "Prepare Stage Update",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Update Word Stage": {
+        "Prepare Stage Update": {
             "main": [
                 [
                     {
-                        "node": "Confirm Update",
+                        "node": "Update Word Stage",
                         "type": "main",
                         "index": 0
                     }

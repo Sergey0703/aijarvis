@@ -8,8 +8,18 @@ from .logging_helper import session_log
 logger = logging.getLogger("news-tool")
 
 def get_webhook_url():
-    """Returns the n8n news webhook URL from environment."""
-    return os.getenv("N8N_NEWS_WEBHOOK_URL") or os.getenv("N8N_WEBHOOK_URL")
+    """Returns the n8n news webhook URL from environment, optionally forcing local access."""
+    url = os.getenv("N8N_NEWS_WEBHOOK_URL") or os.getenv("N8N_WEBHOOK_URL")
+    
+    # If DNS is flaky and n8n is on the same server:
+    # Set N8N_USE_LOCAL=True in your .env
+    if url and os.getenv("N8N_USE_LOCAL", "False").lower() == "true":
+        # Replace the domain part (e.g. aimediaflow.duckdns.org) with localhost:5678
+        # This keeps the path /webhook/... intact.
+        url = re.sub(r'https?://[^/]+', 'http://127.0.0.1:5678', url)
+        logger.debug(f"Forcing local n8n access: {url}")
+        
+    return url
 
 def summarize_text(text: str, sentences_count: int = 4) -> str:
     """Simple helper to extract the first few sentences from text."""

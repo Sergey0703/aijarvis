@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Word Sieve - Bulk Clicker</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f1f5f9;
+            --accent-color: #38bdf8;
+            --secondary-color: #94a3b8;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 16px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            margin: 0;
+            color: var(--accent-color);
+        }
+
+        .header p {
+            font-size: 14px;
+            color: var(--secondary-color);
+            margin-top: 4px;
+        }
+
+        .word-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 80px;
+        }
+
+        .word-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.1s;
+            border: 1px solid transparent;
+        }
+
+        .word-card.selected {
+            border-color: var(--accent-color);
+            background: linear-gradient(135deg, #1e293b 0%, #0c4a6e 100%);
+        }
+
+        .word-info {
+            flex: 1;
+        }
+
+        .word-en {
+            font-size: 18px;
+            font-weight: 600;
+            display: block;
+        }
+
+        .word-ru {
+            font-size: 14px;
+            color: var(--secondary-color);
+            margin-top: 2px;
+        }
+
+        .checkbox-wrapper {
+            position: relative;
+            width: 48px;
+            height: 24px;
+        }
+
+        .toggle {
+            cursor: pointer;
+            width: 44px;
+            height: 22px;
+            background: #334155;
+            display: block;
+            border-radius: 100px;
+            position: relative;
+        }
+
+        .toggle:after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            background: #fff;
+            border-radius: 90px;
+            transition: 0.3s;
+        }
+
+        input:checked+.toggle {
+            background: var(--accent-color);
+        }
+
+        input:checked+.toggle:after {
+            left: calc(100% - 2px);
+            transform: translateX(-100%);
+        }
+
+        input {
+            display: none;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px;
+            background: linear-gradient(0deg, var(--bg-color) 0%, transparent 100%);
+            display: flex;
+            justify-content: center;
+        }
+
+        .main-button {
+            background-color: var(--accent-color);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 24px;
+            font-size: 16px;
+            font-weight: 700;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+        }
+
+        .main-button:disabled {
+            background-color: #334155;
+            color: var(--secondary-color);
+            box-shadow: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>Word Funnel</h1>
+        <p id="count-msg">Found <span id="word-count">...</span> sieved words</p>
+    </div>
+
+    <div class="word-list" id="list">
+        <!-- Words will be injected here -->
+    </div>
+
+    <div class="footer">
+        <button class="main-button" id="submit-btn" onclick="submitSelection()" disabled>Start Practice (0)</button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        let words = [];
+        let selection = new Set();
+
+        // Data would be passed via query params or a direct API call
+        // For n8n, we can inject data or fetch it
+        async function loadWords() {
+            const urlParams = new URL(window.location.href).searchParams;
+            const dataRaw = urlParams.get('data');
+
+            if (dataRaw) {
+                try {
+                    words = JSON.parse(atob(dataRaw));
+                } catch (e) {
+                    console.error("Failed to parse data");
+                    words = [];
+                }
+            }
+
+            render();
+        }
+
+        function render() {
+            const listEl = document.getElementById('list');
+            const countEl = document.getElementById('word-count');
+
+            countEl.innerText = words.length;
+            listEl.innerHTML = words.map(w => `
+                <div class="word-card" id="card-${w._id}" onclick="toggleWord('${w._id}')">
+                    <div class="word-info">
+                        <span class="word-en">${w.word}</span>
+                        <span class="word-ru">${w.translate}</span>
+                    </div>
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="check-${w._id}" ${selection.has(w._id) ? 'checked' : ''}>
+                        <label class="toggle"></label>
+                    </div>
+                </div>
+            `).join('');
+
+            updateButton();
+        }
+
+        function toggleWord(id) {
+            if (selection.has(id)) {
+                selection.delete(id);
+                document.getElementById(`card-${id}`).classList.remove('selected');
+                document.getElementById(`check-${id}`).checked = false;
+            } else {
+                selection.add(id);
+                document.getElementById(`card-${id}`).classList.add('selected');
+                document.getElementById(`check-${id}`).checked = true;
+            }
+            updateButton();
+        }
+
+        function updateButton() {
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = selection.size === 0;
+            btn.innerText = `Start Practice (${selection.size})`;
+        }
+
+        async function submitSelection() {
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerText = "Sending...";
+
+            const approved = Array.from(selection);
+            const rejected = words
+                .map(w => w._id)
+                .filter(id => !selection.has(id));
+
+            const payload = { approved, rejected };
+
+            try {
+                // We'll use a relative path or the same n8n instance
+                const response = await fetch(window.location.href.split('?')[0] + '/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    btn.innerText = "Success! Closing...";
+                    setTimeout(() => tg.close(), 1000);
+                } else {
+                    throw new Error("Failed to update");
+                }
+            } catch (e) {
+                alert("Error: " + e.message);
+                btn.disabled = false;
+                btn.innerText = `Start Practice (${selection.size})`;
+            }
+        }
+
+        loadWords();
+    </script>
+</body>
+
+</html>
