@@ -1,0 +1,365 @@
+{
+  "name": "Smart Funnel: Flashcard Clicker",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            },
+            {
+              "triggerAtHour": 18
+            }
+          ]
+        }
+      },
+      "id": "771b7e20-5c07-45ec-8139-87b611826056",
+      "name": "Schedule: Daily Sieve",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "collection": "words",
+        "options": {
+          "limit": 50,
+          "sort": "{ \"trainDate\": 1 }"
+        },
+        "query": "={}"
+      },
+      "id": "7f9edee3-c397-4773-9c2e-74943917ce0f",
+      "name": "MongoDB: Get Sieved",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1328,
+        784
+      ],
+      "credentials": {
+        "mongoDb": {
+          "id": "p5lVP30sDORJCo8v",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "940676896",
+        "text": "=🇬🇧 <b>{{ $node[\"Edit Fields1\"].json.word }}</b> [{{ $node[\"Edit Fields1\"].json.transcript }}] <tg-spoiler>{{ $node[\"Edit Fields1\"].json.translate }}</tg-spoiler>",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "Repeat",
+                    "additionalFields": {
+                      "callback_data": "={{ 'skip|' + $node[\"Edit Fields1\"].json._id }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "9c30d9cd-a27b-4239-af8d-243ee189d4a1",
+      "name": "Telegram: Send Flashcard",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1952,
+        672
+      ],
+      "webhookId": "dc09b629-9579-4990-9372-e69a5ae6d6b3",
+      "credentials": {
+        "telegramApi": {
+          "id": "44mDjW8nHCGChobZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "b1255805-fc32-47fc-84ce-65cc320ff8ab",
+      "name": "Telegram: Button Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        1040
+      ],
+      "webhookId": "edc352f1-924e-4b98-9248-74e059769f65",
+      "credentials": {
+        "telegramApi": {
+          "id": "44mDjW8nHCGChobZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json.callback_query.data;\nif (!data) return [];\n\nconst [action, id] = data.split('|');\nreturn [{ json: { action, _id: id, original: $json } }];"
+      },
+      "id": "3873604a-7e6c-4b76-af9d-1e1220dc51d4",
+      "name": "Parse Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "words",
+        "updateKey": "_id",
+        "fields": "=stage",
+        "options": {}
+      },
+      "id": "75630ed6-eb70-4aad-99be-ffe553feb542",
+      "name": "MongoDB: Update Stage",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [
+        1968,
+        1136
+      ],
+      "alwaysOutputData": false,
+      "credentials": {
+        "mongoDb": {
+          "id": "p5lVP30sDORJCo8v",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "74e4534c-e4ae-45c1-b6d6-62448cd6b5bf",
+              "name": "stage",
+              "value": "repeat",
+              "type": "string"
+            },
+            {
+              "id": "34c80ec7-fd3d-4f19-9054-9363b1bfcef3",
+              "name": "_id",
+              "value": "={{ $json._id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1744,
+        1136
+      ],
+      "id": "207e2065-3a8e-4ef0-87e0-4c2cb94714b3",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $('Telegram: Button Trigger').item.json.callback_query.id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2192,
+        1136
+      ],
+      "id": "6e44ad75-0856-49f7-b6a6-3d27f02d6e01",
+      "name": "Answer Query a callback",
+      "webhookId": "429ccdb2-8e30-42e0-8157-963e511d65e0",
+      "credentials": {
+        "telegramApi": {
+          "id": "44mDjW8nHCGChobZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "collection": "words",
+        "updateKey": "_id",
+        "fields": "stage, trainDate",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.2,
+      "position": [
+        1760,
+        704
+      ],
+      "id": "a45a1e49-5efe-4510-a758-404108d27e99",
+      "name": "Update documents",
+      "credentials": {
+        "mongoDb": {
+          "id": "p5lVP30sDORJCo8v",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2442de0e-6fea-4693-905a-ee09fc2e7310",
+              "name": "stage",
+              "value": "checked",
+              "type": "string"
+            },
+            {
+              "id": "177480de-83de-4668-817d-cd880bc88cac",
+              "name": "trainDate",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1536,
+        784
+      ],
+      "id": "79844297-3a2e-46b8-86ac-fe568b912535",
+      "name": "Edit Fields1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule: Daily Sieve": {
+      "main": [
+        [
+          {
+            "node": "MongoDB: Get Sieved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB: Get Sieved": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Button Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Callback": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB: Update Stage": {
+      "main": [
+        [
+          {
+            "node": "Answer Query a callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "MongoDB: Update Stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update documents": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Send Flashcard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Update documents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Send Flashcard": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "0946acee-26c9-4cd6-9fd7-ec6669796eec",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6cb256a7bbd0f6147fbf058931ef9d6e6b74163148390272817b18c9ab14a365"
+  },
+  "id": "LfzDFcAhSi9TiMkR",
+  "tags": []
+}

@@ -1,0 +1,225 @@
+{
+  "name": "Smart Funnel",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        880
+      ],
+      "id": "a6cc0974-1b74-4bb3-bf69-93842e1bbbc8",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "query": "news",
+        "options": {
+          "topic": "news",
+          "max_results": 10,
+          "days": 1
+        }
+      },
+      "type": "n8n-nodes-tavily.tavily",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        880
+      ],
+      "id": "b24f5145-5c05-4f80-9eca-e4b692a8a49c",
+      "name": "Query to search with tavily",
+      "credentials": {
+        "tavilyApi": {
+          "id": "nIPqN3hx3KIadVwK",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        128,
+        880
+      ],
+      "id": "9db4df6a-b761-4075-b6f3-9bfe80f0fc3c",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "MWNgETzBSi4cAIFo",
+          "mode": "list",
+          "cachedResultName": "News",
+          "cachedResultUrl": "/projects/jNVg0G6i9vrm7uSd/datatables/MWNgETzBSi4cAIFo"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "url",
+              "keyValue": "={{ $json.results.url }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "isDelivered": false,
+            "url": "={{ $json.results.url }}",
+            "title": "={{ $json.results.title }}",
+            "text": "={{ $json.results.content }}",
+            "publishedDate": "={{ $json.results.published_date }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "publishedDate",
+              "displayName": "publishedDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "text",
+              "displayName": "text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "isDelivered",
+              "displayName": "isDelivered",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "deliveredAt",
+              "displayName": "deliveredAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        352,
+        880
+      ],
+      "id": "f8648146-db23-4f05-a320-9fade985fed2",
+      "name": "Upsert row(s)"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Query to search with tavily",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query to search with tavily": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Upsert row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "a74ac9e6-ab56-4379-9c59-d8589e134c8e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6cb256a7bbd0f6147fbf058931ef9d6e6b74163148390272817b18c9ab14a365"
+  },
+  "id": "hUXhiKm4HmI3adYq",
+  "tags": []
+}
