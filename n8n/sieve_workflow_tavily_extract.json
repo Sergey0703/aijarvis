@@ -1,0 +1,198 @@
+{
+    "name": "Smart Funnel (Tavily Extract)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "triggerAtHour": 6
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                -440,
+                0
+            ],
+            "id": "schedule-trigger",
+            "name": "Schedule Trigger"
+        },
+        {
+            "parameters": {
+                "query": "news",
+                "options": {
+                    "topic": "news",
+                    "max_results": 10,
+                    "days": 1,
+                    "search_depth": "advanced",
+                    "include_raw_content": false
+                }
+            },
+            "type": "n8n-nodes-tavily.tavily",
+            "typeVersion": 1,
+            "position": [
+                -220,
+                0
+            ],
+            "id": "tavily-search",
+            "name": "Search for URLs",
+            "credentials": {
+                "tavilyApi": {
+                    "id": "nIPqN3hx3KIadVwK",
+                    "name": "Tavily account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "results",
+                "include": "noOtherFields"
+            },
+            "type": "n8n-nodes-base.splitOut",
+            "typeVersion": 1,
+            "position": [
+                0,
+                0
+            ],
+            "id": "split-results",
+            "name": "Split Out"
+        },
+        {
+            "parameters": {
+                "action": "extract",
+                "urls": "={{ $json.url }}",
+                "additionalFields": {
+                    "extract_depth": "basic"
+                }
+            },
+            "type": "n8n-nodes-tavily.tavily",
+            "typeVersion": 1,
+            "position": [
+                220,
+                0
+            ],
+            "id": "tavily-extract",
+            "name": "Extract Clean Content",
+            "credentials": {
+                "tavilyApi": {
+                    "id": "nIPqN3hx3KIadVwK",
+                    "name": "Tavily account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const items = $input.all();\n\nfor (const item of items) {\n  const extraction = item.json.results?.[0] || {};\n  let text = extraction.raw_content || '';\n  \n  // 1. CLEANING FIRST (to remove noise before heuristic check)\n  text = text\n    .replace(/!\\[.*?\\]\\(.*?\\)/g, '') // Remove images\n    .replace(/\\[(.*?)\\]\\(.*?\\)/g, '$1') // Clean links\n    .replace(/^.*?Home\\s*[»>].*?$/gm, '') // Strip breadcrumbs\n    // Strip expanded noise sections\n    .replace(/(### About|#### Search|#### Gallery|#### Top Stories|### Like this:|#### Archives|### Sections|### Local|### tv|### Featured|### More From|Copyright \\d+|Subscribe to|Follow us on|Watch on|Download the).*/gs, '')\n    .replace(/[\\s)\"']{1,10}$/, '') // Clean trailing artifacts\n    .replace(/http[s]?:\\/\\/\\S+/g, ''); // Remove standalone URLs\n\n  // 2. DEDUPLICATION (removes repeated paragraphs common in Xinhua/BNN)\n  const lines = text.split('\\n');\n  const uniqueLines = [];\n  const seen = new Set();\n  for (const line of lines) {\n    const trimmed = line.trim();\n    if (trimmed.length > 0) {\n      if (!seen.has(trimmed)) {\n        uniqueLines.push(line);\n        seen.add(trimmed);\n      }\n    } else {\n      uniqueLines.push(line);\n    }\n  }\n  text = uniqueLines.join('\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\n\n  // 3. HEURISTIC FILTER (on CLEANED text)\n  const headersCount = (text.match(/^[#]{1,4}\\s/gm) || []).length;\n  const totalWords = text.split(/\\s+/).length;\n  \n  // Heuristic: If headers > 1 per 25 words in CLEANED text, it's still just a list\n  if (headersCount > (totalWords / 25) || totalWords < 60) {\n    item.json.cleanText = '';\n    continue;\n  }\n\n  // 4. Final Quality Gate\n  if (text.length >= 400) {\n    item.json.cleanText = text;\n    item.json.title = (extraction.title || item.json.title || '').trim();\n    item.json.url = extraction.url || item.json.url;\n  } else {\n    item.json.cleanText = '';\n  }\n}\n\nreturn items.filter(item => item.json.cleanText !== '');"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                440,
+                0
+            ],
+            "id": "validate-content",
+            "name": "Validate & Clean"
+        },
+        {
+            "parameters": {
+                "operation": "upsert",
+                "dataTableId": {
+                    "__rl": true,
+                    "value": "MWNgETzBSi4cAIFo",
+                    "mode": "list",
+                    "cachedResultName": "News"
+                },
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "url",
+                            "keyValue": "={{ $json.url }}"
+                        }
+                    ]
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "isDelivered": false,
+                        "url": "={{ $json.url }}",
+                        "title": "={{ $json.title }}",
+                        "text": "={{ $json.cleanText }}",
+                        "publishedDate": "={{ new Date().toISOString() }}"
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.dataTable",
+            "typeVersion": 1.1,
+            "position": [
+                660,
+                0
+            ],
+            "id": "upsert-news",
+            "name": "Upsert row(s)"
+        }
+    ],
+    "connections": {
+        "Schedule Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Search for URLs",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Search for URLs": {
+            "main": [
+                [
+                    {
+                        "node": "Split Out",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Out": {
+            "main": [
+                [
+                    {
+                        "node": "Extract Clean Content",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract Clean Content": {
+            "main": [
+                [
+                    {
+                        "node": "Validate & Clean",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate & Clean": {
+            "main": [
+                [
+                    {
+                        "node": "Upsert row(s)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

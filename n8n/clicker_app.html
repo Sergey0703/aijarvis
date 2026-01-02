@@ -3,122 +3,122 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Word Sieve - Bulk Clicker</title>
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Word Sieve Pro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --text-color: #f1f5f9;
+            --bg-color: #0c0e12;
+            --card-bg: #161a22;
+            --text-color: #e2e8f0;
             --accent-color: #38bdf8;
-            --secondary-color: #94a3b8;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --surface-color: #1e293b;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, system-ui, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 16px;
+            padding: 8px 12px 100px;
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
 
         .header {
-            margin-bottom: 24px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 20px;
-            margin: 0;
-            color: var(--accent-color);
-        }
-
-        .header p {
-            font-size: 14px;
-            color: var(--secondary-color);
-            margin-top: 4px;
-        }
-
-        .word-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-bottom: 80px;
-        }
-
-        .word-card {
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            padding: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: transform 0.1s;
-            border: 1px solid transparent;
+            margin-bottom: 12px;
+            padding: 4px;
         }
 
-        .word-card.selected {
+        .header h1 {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+
+        .stats {
+            font-size: 11px;
+            color: var(--secondary-color);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .word-list {
+            display: grid;
+            gap: 6px;
+        }
+
+        .word-item {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid #ffffff05;
+            transition: all 0.1s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .word-item.selected {
+            background-color: #0ea5e908;
+            border-color: #0ea5e920;
+        }
+
+        .word-item.selected .practice-btn {
+            background-color: var(--accent-color);
+            color: #000;
             border-color: var(--accent-color);
-            background: linear-gradient(135deg, #1e293b 0%, #0c4a6e 100%);
         }
 
-        .word-info {
+        .content {
             flex: 1;
+            min-width: 0;
         }
 
         .word-en {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 600;
             display: block;
+            margin-bottom: 0;
         }
 
         .word-ru {
-            font-size: 14px;
+            font-size: 11px;
             color: var(--secondary-color);
-            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .checkbox-wrapper {
-            position: relative;
-            width: 48px;
-            height: 24px;
+        .practice-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: transparent;
+            color: var(--secondary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.1s;
+            flex-shrink: 0;
         }
 
-        .toggle {
-            cursor: pointer;
-            width: 44px;
-            height: 22px;
-            background: #334155;
-            display: block;
-            border-radius: 100px;
-            position: relative;
-        }
-
-        .toggle:after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 18px;
-            height: 18px;
-            background: #fff;
-            border-radius: 90px;
-            transition: 0.3s;
-        }
-
-        input:checked+.toggle {
-            background: var(--accent-color);
-        }
-
-        input:checked+.toggle:after {
-            left: calc(100% - 2px);
-            transform: translateX(-100%);
-        }
-
-        input {
-            display: none;
+        .practice-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
         }
 
         .footer {
@@ -127,44 +127,60 @@
             left: 0;
             right: 0;
             padding: 16px;
-            background: linear-gradient(0deg, var(--bg-color) 0%, transparent 100%);
+            background: linear-gradient(to top, var(--bg-color) 80%, transparent);
             display: flex;
-            justify-content: center;
+            gap: 12px;
+            z-index: 100;
         }
 
-        .main-button {
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
             background-color: var(--accent-color);
             color: #000;
-            border: none;
-            border-radius: 12px;
-            padding: 14px 24px;
-            font-size: 16px;
-            font-weight: 700;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+            box-shadow: 0 4px 12px #38bdf830;
         }
 
-        .main-button:disabled {
-            background-color: #334155;
+        .btn-loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             color: var(--secondary-color);
-            box-shadow: none;
+            font-size: 13px;
         }
     </style>
 </head>
 
 <body>
     <div class="header">
-        <h1>Word Funnel</h1>
-        <p id="count-msg">Found <span id="word-count">...</span> sieved words</p>
+        <h1>Word Sieve <span style="color:var(--accent-color)">Pro</span></h1>
+        <div class="stats" id="stats-counter">0 SELECTED</div>
     </div>
 
-    <div class="word-list" id="list">
-        <!-- Words will be injected here -->
-    </div>
+    <div id="loading">Syncing workspace...</div>
+    <div id="list" class="word-list"></div>
 
     <div class="footer">
-        <button class="main-button" id="submit-btn" onclick="submitSelection()" disabled>Start Practice (0)</button>
+        <button class="btn btn-primary" onclick="submit()" id="submit-btn">Save Progress</button>
     </div>
 
     <script>
@@ -173,100 +189,94 @@
         tg.ready();
 
         let words = [];
-        let selection = new Set();
+        let selectedIds = new Set();
 
-        // Data would be passed via query params or a direct API call
-        // For n8n, we can inject data or fetch it
-        async function loadWords() {
-            const urlParams = new URL(window.location.href).searchParams;
-            const dataRaw = urlParams.get('data');
+        const listEl = document.getElementById('list');
+        const loadingEl = document.getElementById('loading');
+        const counterEl = document.getElementById('stats-counter');
+        const submitBtn = document.getElementById('submit-btn');
 
-            if (dataRaw) {
-                try {
-                    words = JSON.parse(atob(dataRaw));
-                } catch (e) {
-                    console.error("Failed to parse data");
-                    words = [];
-                }
+        function init() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const data = params.get('data');
+                if (!data) throw new Error('No data provided');
+
+                words = JSON.parse(atob(data));
+                // Pre-select all words by default
+                words.forEach(w => selectedIds.add(w._id));
+
+                loadingEl.style.display = 'none';
+                render();
+            } catch (e) {
+                loadingEl.innerText = 'Error loading words. Please try again.';
+                console.error(e);
             }
-
-            render();
         }
 
         function render() {
-            const listEl = document.getElementById('list');
-            const countEl = document.getElementById('word-count');
-
-            countEl.innerText = words.length;
-            listEl.innerHTML = words.map(w => `
-                <div class="word-card" id="card-${w._id}" onclick="toggleWord('${w._id}')">
-                    <div class="word-info">
-                        <span class="word-en">${w.word}</span>
-                        <span class="word-ru">${w.translate}</span>
+            listEl.innerHTML = words.map(w => {
+                const isSelected = selectedIds.has(w._id);
+                return `
+                    <div class="word-item ${isSelected ? 'selected' : ''}" onclick="toggle('${w._id}')">
+                        <div class="content">
+                            <span class="word-en">${w.word}</span>
+                            <span class="word-ru">${w.translate}</span>
+                        </div>
+                        <div class="practice-btn">
+                            ${isSelected ?
+                        '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>' :
+                        '<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>'}
+                        </div>
                     </div>
-                    <div class="checkbox-wrapper">
-                        <input type="checkbox" id="check-${w._id}" ${selection.has(w._id) ? 'checked' : ''}>
-                        <label class="toggle"></label>
-                    </div>
-                </div>
-            `).join('');
-
-            updateButton();
+                `;
+            }).join('');
+            updateCounter();
         }
 
-        function toggleWord(id) {
-            if (selection.has(id)) {
-                selection.delete(id);
-                document.getElementById(`card-${id}`).classList.remove('selected');
-                document.getElementById(`check-${id}`).checked = false;
+        function toggle(id) {
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
             } else {
-                selection.add(id);
-                document.getElementById(`card-${id}`).classList.add('selected');
-                document.getElementById(`check-${id}`).checked = true;
+                selectedIds.add(id);
             }
-            updateButton();
+            render(); // Re-render to update selection styles
         }
 
-        function updateButton() {
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = selection.size === 0;
-            btn.innerText = `Start Practice (${selection.size})`;
+        function updateCounter() {
+            counterEl.innerText = `${selectedIds.size} SELECTED`;
         }
 
-        async function submitSelection() {
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = true;
-            btn.innerText = "Sending...";
+        async function submit() {
+            if (submitBtn.classList.contains('btn-loading')) return;
 
-            const approved = Array.from(selection);
-            const rejected = words
-                .map(w => w._id)
-                .filter(id => !selection.has(id));
+            const approved = words.filter(w => selectedIds.has(w._id));
+            const rejected = words.filter(w => !selectedIds.has(w._id));
 
-            const payload = { approved, rejected };
+            submitBtn.innerText = 'Syncing...';
+            submitBtn.classList.add('btn-loading');
+            tg.HapticFeedback.notificationOccurred('success');
 
             try {
-                // We'll use a relative path or the same n8n instance
-                const response = await fetch(window.location.href.split('?')[0] + '/submit', {
+                const response = await fetch('https://aimediaflow.duckdns.org/webhook/word-clicker/submit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ approved, rejected })
                 });
 
                 if (response.ok) {
-                    btn.innerText = "Success! Closing...";
-                    setTimeout(() => tg.close(), 1000);
+                    tg.close();
                 } else {
-                    throw new Error("Failed to update");
+                    throw new Error('Failed to save');
                 }
             } catch (e) {
-                alert("Error: " + e.message);
-                btn.disabled = false;
-                btn.innerText = `Start Practice (${selection.size})`;
+                alert('Save failed. Please check connection.');
+                submitBtn.innerText = 'Try Again';
+                submitBtn.classList.remove('btn-loading');
             }
         }
 
-        loadWords();
+        init();
     </script>
 </body>
 

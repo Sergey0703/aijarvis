@@ -52,10 +52,10 @@ def run_backup():
         print("-" * 30)
         # Check if it's a DNS issue
         if "getaddrinfo failed" in str(e) or "no such host" in str(e).lower():
-            print("CRITICAL: DNS Resolution error. Your computer cannot find 'llssu.mongodb.net'.")
+            print("CRITICAL: DNS Resolution error. Your computer cannot find '1lssu.mongodb.net'.")
             print("POSSIBLE FIXES:")
             print("1. Check if you are using a VPN. Try turning it ON (or OFF).")
-            print("2. Check for typos in the hostname (llssu).")
+            print("2. Check for typos in the hostname (1lssu).")
             print("3. Try changing Windows DNS to 8.8.8.8.")
         else:
             print(f"Details: {e}")

@@ -123,13 +123,22 @@ async def entrypoint(ctx: JobContext):
     # Register the callback with the JobContext (the official way)
     ctx.add_shutdown_callback(send_report)
 
-    # 2. Setup the agent and fetch initial news
+    # 2. Setup the agent and fetch initial context
     lesson_text = await fetch_raw_news()
+    from aitools.mongo import mongo_helper
+    approved_words = await mongo_helper.get_checked_words()
     
-    if lesson_text:
-        custom_instruction = f"{AGENT_INSTRUCTION}\n\nTODAY'S NEWS FOR THIS LESSON:\n{lesson_text.strip()}"
-    else:
-        custom_instruction = AGENT_INSTRUCTION
+    context_parts = []
+    if news_text := lesson_text.strip():
+        context_parts.append(f"TODAY'S NEWS FOR CONTEXT:\n{news_text}")
+    
+    if approved_words:
+        words_str = "\n".join([f"- {w['word']} ({w['translate']})" for w in approved_words])
+        context_parts.append(f"USER APPROVED THESE WORDS FOR PRACTICE TODAY (PRIORITY):\n{words_str}")
+
+    custom_instruction = AGENT_INSTRUCTION
+    if context_parts:
+        custom_instruction += "\n\n" + "\n\n".join(context_parts)
     
     session_instruction = SESSION_INSTRUCTION
 

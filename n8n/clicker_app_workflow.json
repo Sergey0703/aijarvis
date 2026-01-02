@@ -1,159 +1,6 @@
 {
-    "name": "Smart Funnel: Stage 2 (Bulk Clicker App) - IMPROVED",
+    "name": "Smart Funnel: Flashcard Clicker",
     "nodes": [
-        {
-            "parameters": {
-                "httpMethod": "POST",
-                "path": "word-clicker/submit",
-                "options": {}
-            },
-            "id": "submit-webhook",
-            "name": "Webhook: Submit",
-            "type": "n8n-nodes-base.webhook",
-            "typeVersion": 1.1,
-            "position": [
-                380,
-                600
-            ]
-        },
-        {
-            "parameters": {
-                "fieldToSplitOut": "approved",
-                "options": {}
-            },
-            "id": "split-approved",
-            "name": "Approved Words",
-            "type": "n8n-nodes-base.splitOut",
-            "typeVersion": 1,
-            "position": [
-                580,
-                500
-            ]
-        },
-        {
-            "parameters": {
-                "operation": "update",
-                "collection": "words",
-                "updateKey": "_id",
-                "fields": "stage",
-                "updateFields": "={\n  \"$set\": {\n    \"stage\": \"checked\"\n  }\n}"
-            },
-            "id": "mongo-approve",
-            "name": "MongoDB: Approve",
-            "type": "n8n-nodes-base.mongoDb",
-            "typeVersion": 1,
-            "position": [
-                780,
-                500
-            ],
-            "credentials": {
-                "mongoDb": {
-                    "id": "p5lVP30sDORJCo8v"
-                }
-            }
-        },
-        {
-            "parameters": {
-                "fieldToSplitOut": "rejected",
-                "options": {}
-            },
-            "id": "split-rejected",
-            "name": "Rejected Words",
-            "type": "n8n-nodes-base.splitOut",
-            "typeVersion": 1,
-            "position": [
-                580,
-                700
-            ]
-        },
-        {
-            "parameters": {
-                "operation": "update",
-                "collection": "words",
-                "updateKey": "_id",
-                "fields": "stage",
-                "updateFields": "={\n  \"$set\": {\n    \"stage\": \"new\"\n  }\n}"
-            },
-            "id": "mongo-reject",
-            "name": "MongoDB: Reject (Back to New)",
-            "type": "n8n-nodes-base.mongoDb",
-            "typeVersion": 1,
-            "position": [
-                780,
-                700
-            ],
-            "credentials": {
-                "mongoDb": {
-                    "id": "p5lVP30sDORJCo8v"
-                }
-            }
-        },
-        {
-            "parameters": {
-                "respondWith": "text",
-                "responseBody": "OK",
-                "options": {}
-            },
-            "id": "respond-ok",
-            "name": "Respond OK",
-            "type": "n8n-nodes-base.respondToWebhook",
-            "typeVersion": 1,
-            "position": [
-                980,
-                600
-            ]
-        },
-        {
-            "parameters": {
-                "path": "word-clicker",
-                "options": {}
-            },
-            "id": "serve-webhook",
-            "name": "Webhook: Serve App",
-            "type": "n8n-nodes-base.webhook",
-            "typeVersion": 1.1,
-            "position": [
-                380,
-                350
-            ]
-        },
-        {
-            "parameters": {
-                "jsCode": "const fs = require('fs');\nconst html = fs.readFileSync('c:/projects/aijarvis/n8n/clicker_app.html', 'utf8');\nreturn [{ json: { html } }];"
-            },
-            "id": "read-html-code",
-            "name": "Read HTML File",
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 1,
-            "position": [
-                580,
-                350
-            ]
-        },
-        {
-            "parameters": {
-                "respondWith": "text",
-                "responseBody": "={{ $json.html }}",
-                "options": {
-                    "responseHeaders": {
-                        "entries": [
-                            {
-                                "name": "Content-Type",
-                                "value": "text/html"
-                            }
-                        ]
-                    }
-                }
-            },
-            "id": "respond-html",
-            "name": "Respond with HTML",
-            "type": "n8n-nodes-base.respondToWebhook",
-            "typeVersion": 1,
-            "position": [
-                780,
-                350
-            ]
-        },
         {
             "parameters": {
                 "rule": {
@@ -167,13 +14,13 @@
                     ]
                 }
             },
-            "id": "trigger-id",
+            "id": "node-1-id",
             "name": "Schedule: Daily Sieve",
             "type": "n8n-nodes-base.scheduleTrigger",
             "typeVersion": 1.1,
             "position": [
-                380,
-                150
+                200,
+                200
             ]
         },
         {
@@ -182,16 +29,16 @@
                 "collection": "words",
                 "query": "={ \"stage\": \"sieved\" }",
                 "options": {
-                    "limit": 15
+                    "limit": 20
                 }
             },
-            "id": "mongo-find-id",
+            "id": "node-2-id",
             "name": "MongoDB: Get Sieved",
             "type": "n8n-nodes-base.mongoDb",
-            "typeVersion": 1,
+            "typeVersion": 1.1,
             "position": [
-                580,
-                150
+                400,
+                200
             ],
             "credentials": {
                 "mongoDb": {
@@ -201,42 +48,145 @@
         },
         {
             "parameters": {
-                "jsCode": "const words = items.map(i => ({\n  _id: i.json._id,\n  word: i.json.word,\n  translate: i.json.translate\n}));\n\nconst data = Buffer.from(JSON.stringify(words)).toString('base64');\n// Replace this with your actual n8n public URL\nconst appUrl = `https://YOUR_N8N_URL/webhook/word-clicker?data=${data}`;\n\nreturn [{ json: { appUrl, count: words.length } }];"
+                "chatId": "940676896",
+                "text": "=🇬🇧 **{{ $json.word }}**",
+                "replyMarkup": "inline_keyboard",
+                "inlineKeyboard": "={{ [[{ \"text\": \"👁 Перевод\", \"callback_data\": \"show|\" + $json._id }, { \"text\": \"🔁 На доизучение\", \"callback_data\": \"skip|\" + $json._id }]] }}",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
             },
-            "id": "gen-url-id",
-            "name": "Generate App URL",
-            "type": "n8n-nodes-base.code",
-            "typeVersion": 1,
+            "id": "node-3-id",
+            "name": "Telegram: Send Flashcard",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
             "position": [
-                780,
-                150
+                600,
+                200
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "YOUR_TG_CRED_ID"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "updates": [
+                    "callback_query"
+                ]
+            },
+            "id": "node-4-id",
+            "name": "Telegram: Button Trigger",
+            "type": "n8n-nodes-base.telegramTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                200,
+                450
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "YOUR_TG_CRED_ID"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const data = $json.callback_query.data;\nif (!data) return [];\n\nconst [action, id] = data.split('|');\nreturn [{ json: { action, _id: id, original: $json } }];"
+            },
+            "id": "node-5-id",
+            "name": "Parse Callback",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                400,
+                450
             ]
         },
         {
             "parameters": {
-                "chatId": "YOUR_CHAT_ID",
-                "text": "=Found {{ $json.count }} new words in the news today! \n\nSelect words you'd like to practice:",
-                "replyMarkup": "inline_keyboard",
-                "inlineKeyboard": {
-                    "rows": [
-                        {
-                            "buttons": [
-                                {
-                                    "text": "🚀 Open Word Sieve",
-                                    "url": "={{ $json.appUrl }}"
-                                }
-                            ]
-                        }
-                    ]
-                }
+                "operation": "findOne",
+                "collection": "words",
+                "query": "={ \"_id\": { \"$oid\": \"{{ $json._id }}\" } }",
+                "options": {}
             },
-            "id": "tg-notify-id",
-            "name": "Telegram: Send App Link",
-            "type": "n8n-nodes-base.telegram",
+            "id": "node-6-id",
+            "name": "MongoDB: Get Word Data",
+            "type": "n8n-nodes-base.mongoDb",
             "typeVersion": 1.1,
             "position": [
-                980,
-                150
+                600,
+                450
+            ],
+            "credentials": {
+                "mongoDb": {
+                    "id": "p5lVP30sDORJCo8v"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "editMessageText",
+                "chatId": "={{ $node[\"Parse Callback\"].json.original.callback_query.message.chat.id }}",
+                "messageId": "={{ $node[\"Parse Callback\"].json.original.callback_query.message.message_id }}",
+                "text": "=🇬🇧 **{{ $json.word }}** — 🇷🇺 {{ $json.translate }}",
+                "replyMarkup": "inline_keyboard",
+                "inlineKeyboard": "={{ [[{ \"text\": \"✅ Yes\", \"callback_data\": \"checked|\" + $json._id }, { \"text\": \"❌ No\", \"callback_data\": \"skip|\" + $json._id }]] }}",
+                "additionalFields": {
+                    "parse_mode": "Markdown"
+                }
+            },
+            "id": "node-7-id",
+            "name": "TG: Reveal Translation",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                800,
+                400
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "YOUR_TG_CRED_ID"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "collection": "words",
+                "updateKey": "_id",
+                "fields": "stage",
+                "updateFields": "={\"$set\": {\"stage\": \"{{ $node[\"Parse Callback\"].json.action == 'checked' ? 'checked' : 'new' }}\"}}"
+            },
+            "id": "node-8-id",
+            "name": "MongoDB: Update Stage",
+            "type": "n8n-nodes-base.mongoDb",
+            "typeVersion": 1.1,
+            "position": [
+                800,
+                550
+            ],
+            "credentials": {
+                "mongoDb": {
+                    "id": "p5lVP30sDORJCo8v"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "resource": "callback",
+                "operation": "answer",
+                "callbackQueryId": "={{ $node[\"Parse Callback\"].json.original.callback_query.id }}",
+                "text": "=Done!",
+                "options": {}
+            },
+            "id": "node-9-id",
+            "name": "TG: Answer Callback",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                1050,
+                450
             ],
             "credentials": {
                 "telegramApi": {
@@ -246,88 +196,6 @@
         }
     ],
     "connections": {
-        "Webhook: Submit": {
-            "main": [
-                [
-                    {
-                        "node": "Approved Words",
-                        "type": "main",
-                        "index": 0
-                    },
-                    {
-                        "node": "Rejected Words",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Approved Words": {
-            "main": [
-                [
-                    {
-                        "node": "MongoDB: Approve",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "MongoDB: Approve": {
-            "main": [
-                [
-                    {
-                        "node": "Respond OK",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Rejected Words": {
-            "main": [
-                [
-                    {
-                        "node": "MongoDB: Reject (Back to New)",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "MongoDB: Reject (Back to New)": {
-            "main": [
-                [
-                    {
-                        "node": "Respond OK",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Webhook: Serve App": {
-            "main": [
-                [
-                    {
-                        "node": "Read HTML File",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Read HTML File": {
-            "main": [
-                [
-                    {
-                        "node": "Respond with HTML",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
         "Schedule: Daily Sieve": {
             "main": [
                 [
@@ -343,18 +211,67 @@
             "main": [
                 [
                     {
-                        "node": "Generate App URL",
+                        "node": "Telegram: Send Flashcard",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "Generate App URL": {
+        "Telegram: Button Trigger": {
             "main": [
                 [
                     {
-                        "node": "Telegram: Send App Link",
+                        "node": "Parse Callback",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse Callback": {
+            "main": [
+                [
+                    {
+                        "node": "MongoDB: Get Word Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "MongoDB: Get Word Data": {
+            "main": [
+                [
+                    {
+                        "node": "TG: Reveal Translation",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "MongoDB: Update Stage",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "MongoDB: Update Stage": {
+            "main": [
+                [
+                    {
+                        "node": "TG: Answer Callback",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "TG: Reveal Translation": {
+            "main": [
+                [
+                    {
+                        "node": "TG: Answer Callback",
                         "type": "main",
                         "index": 0
                     }
