@@ -3,16 +3,17 @@ services:
     build: .
     container_name: english-tutor-agent
     restart: always
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     env_file:
       - .env
-    # No ports needed for standard worker, but can be added for health checks
-    # ports:
-    #   - "7860:7860"
+    networks:
+      - default
+      - n8n_default
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
+
+networks:
+  n8n_default:
+    external: true
