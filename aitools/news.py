@@ -75,8 +75,8 @@ async def fetch_raw_news() -> str:
         title = item.get('title', 'No Title')
         titles.append(title)
         text = item.get('text', '')
-        summary = summarize_text(text, 4)
-        formatted_news.append(f"{i}. TITLE: {title}\n   SUMMARY: {summary}\n")
+        # Use full text to provide complete context to the agent
+        formatted_news.append(f"{i}. TITLE: {title}\n   CONTENT: {text}\n")
 
     # Add titles to session log for the report
     session_log.add_log("INFO", f"News Topics: {', '.join(titles)}")

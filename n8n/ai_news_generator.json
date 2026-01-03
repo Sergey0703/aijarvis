@@ -181,6 +181,52 @@
         },
         {
             "parameters": {
+                "resource": "audio",
+                "operation": "speech",
+                "modelId": "tts-1",
+                "text": "={{ $json.content.replace(/<[^>]*>/g, '') }}",
+                "options": {
+                    "voice": "alloy"
+                }
+            },
+            "id": "openai-tts",
+            "name": "OpenAI: Generate Audio",
+            "type": "n8n-nodes-base.openAi",
+            "typeVersion": 1,
+            "position": [
+                850,
+                500
+            ],
+            "credentials": {
+                "openAiApi": {
+                    "id": "YOUR_OPENAI_CRED_ID"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "chatId": "940676896",
+                "file": "={{ $json.data }}",
+                "additionalFields": {
+                    "caption": "🎧 Audio Version"
+                }
+            },
+            "id": "telegram-send-audio",
+            "name": "Telegram: Send Audio",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                1050,
+                500
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "YOUR_TG_CRED_ID"
+                }
+            }
+        },
+        {
+            "parameters": {
                 "chatId": "940676896",
                 "text": "=📰 <b>Daily Smart News</b>\n\n{{ $json.content }}",
                 "additionalFields": {
@@ -259,6 +305,11 @@
                         "node": "Prepare Digest Data",
                         "type": "main",
                         "index": 0
+                    },
+                    {
+                        "node": "OpenAI: Generate Audio",
+                        "type": "main",
+                        "index": 0
                     }
                 ]
             ]
@@ -279,6 +330,17 @@
                 [
                     {
                         "node": "Telegeram: Send Digest",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenAI: Generate Audio": {
+            "main": [
+                [
+                    {
+                        "node": "Telegram: Send Audio",
                         "type": "main",
                         "index": 0
                     }
