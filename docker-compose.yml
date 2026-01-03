@@ -3,6 +3,9 @@ services:
     build: .
     container_name: english-tutor-agent
     restart: always
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - .env
     # No ports needed for standard worker, but can be added for health checks

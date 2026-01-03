@@ -125,16 +125,16 @@ async def entrypoint(ctx: JobContext):
 
     # 2. Setup the agent and fetch initial context
     lesson_text = await fetch_raw_news()
-    from aitools.mongo import mongo_helper
-    approved_words = await mongo_helper.get_checked_words()
+    # from aitools.mongo import mongo_helper
+    # approved_words = await mongo_helper.get_checked_words()
     
     context_parts = []
     if news_text := lesson_text.strip():
         context_parts.append(f"TODAY'S NEWS FOR CONTEXT:\n{news_text}")
     
-    if approved_words:
-        words_str = "\n".join([f"- {w['word']} ({w['translate']})" for w in approved_words])
-        context_parts.append(f"USER APPROVED THESE WORDS FOR PRACTICE TODAY (PRIORITY):\n{words_str}")
+    # if approved_words:
+    #     words_str = "\n".join([f"- {w['word']} ({w['translate']})" for w in approved_words])
+    #     context_parts.append(f"USER APPROVED THESE WORDS FOR PRACTICE TODAY (PRIORITY):\n{words_str}")
 
     custom_instruction = AGENT_INSTRUCTION
     if context_parts:
