@@ -76,7 +76,7 @@
         },
         {
             "parameters": {
-                "jsCode": "const words = $items(\"MongoDB: Get Repeat Words\").map(i => i.json.word + \" (\" + i.json.translate + \")\").join(\", \");\nconst news = $items(\"Get Fresh News\").map(i => \"### \" + i.json.title + \"\\n\" + (i.json.text || \"\")).join(\"\\n\\n\");\n\nreturn [{ json: { \n    prompt: `Based on the following news articles:\\n\\n${news}\\n\\nTask: Write a cohesive, engaging daily digest (approx 300 words). \\nYou must integrate the following vocabulary words into the narrative naturally: ${words}.\\n\\nStructure of the response:\\n1. Start with a section: \"🎯 <b>Vocabulary Focus:</b>\" and list the target words with their translations.\\n2. Then write the news digest.\\n\\nRequirements:\\n- Highlight the inserted words in the text in <b>bold</b> (use HTML tags <b>word</b>).\\n- Keep the tone professional but conversational.\\n- Ensure the facts from the news are preserved.` \n} }];"
+                "jsCode": "const wordItems = $items(\"MongoDB: Get Repeat Words\");\nconst words = wordItems.length > 0 \n    ? wordItems.map(i => i.json.word ? i.json.word + \" (\" + i.json.translate + \")\" : null).filter(w => w).join(\", \") \n    : \"\";\n\nconst news = $items(\"Get Fresh News\").map(i => \"### \" + i.json.title + \"\\n\" + (i.json.text || \"\")).join(\"\\n\\n\");\n\nlet vocabTask = \"\";\nlet vocabStructure = \"\";\n\nif (words) {\n    vocabTask = `\\nYou must integrate the following vocabulary words into the narrative naturally: ${words}.`;\n    vocabStructure = `1. Start with a section: \"🎯 <b>Vocabulary Focus:</b>\" and list the target words with their translations (bullet points).\\n2. Insert the separator \"---START_OF_DIGEST---\" on a new line.\\n3. Then write the news digest below it.`;\n} else {\n    vocabTask = \"\\nFocus on generating a clear and interesting summary.\";\n    vocabStructure = `1. Start immediately with the separator \"---START_OF_DIGEST---\" on the first line.\\n2. Then write the news digest below it.`;\n}\n\nreturn [{ json: { \n    prompt: `Based on the following news articles:\\n\\n${news}\\n\\nTask: Write a cohesive, engaging daily digest (approx 300 words).${vocabTask}\\n\\nStructure of the response:\\n${vocabStructure}\\n\\nRequirements:\\n- Highlight the inserted words in the text in <b>bold</b> (use HTML tags <b>word</b>) if applicable.\\n- Keep the tone professional but conversational.\\n- Ensure the facts from the news are preserved.\\n- <b>CRITICAL FOR AUDIO:</b> Clearly introduce each new story/topic. Use phrases like \"First up regarding [Topic]...\", \"In other news...\", or explicitly state the headline to separate stories. Avoid a wall of text; use paragraph breaks.` \n} }];"
             },
             "id": "prepare-prompt",
             "name": "Prepare AI Prompt",
@@ -89,14 +89,7 @@
         },
         {
             "parameters": {
-                "modelId": "gpt-4o-mini",
-                "messages": {
-                    "values": [
-                        {
-                            "content": "={{ $json.prompt }}"
-                        }
-                    ]
-                }
+                "modelId": "gpt-4o-mini"
             },
             "id": "openai-node",
             "name": "AI Agent (ChatGPT)",
@@ -181,27 +174,33 @@
         },
         {
             "parameters": {
-                "resource": "audio",
-                "operation": "speech",
-                "modelId": "tts-1",
-                "text": "={{ $json.content.replace(/<[^>]*>/g, '') }}",
+                "method": "POST",
+                "url": "http://piper:5000",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "text",
+                            "value": "={{ $json.content.replace(/<[^>]*>/g, '') }}"
+                        }
+                    ]
+                },
                 "options": {
-                    "voice": "alloy"
+                    "response": {
+                        "response": {
+                            "responseFormat": "file"
+                        }
+                    }
                 }
             },
-            "id": "openai-tts",
-            "name": "OpenAI: Generate Audio",
-            "type": "n8n-nodes-base.openAi",
-            "typeVersion": 1,
+            "id": "piper-tts",
+            "name": "Piper: Generate Audio",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
             "position": [
                 850,
                 500
-            ],
-            "credentials": {
-                "openAiApi": {
-                    "id": "YOUR_OPENAI_CRED_ID"
-                }
-            }
+            ]
         },
         {
             "parameters": {
@@ -291,14 +290,25 @@
             "main": [
                 [
                     {
-                        "node": "AI Agent (ChatGPT)",
+                        "node": "Prepare AI Prompt",
                         "type": "main",
                         "index": 0
                     }
                 ]
             ]
         },
-        "AI Agent (ChatGPT)": {
+        "Prepare AI Prompt": {
+            "main": [
+                [
+                    {
+                        "node": "Basic LLM Chain",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Basic LLM Chain": {
             "main": [
                 [
                     {
@@ -307,7 +317,7 @@
                         "index": 0
                     },
                     {
-                        "node": "OpenAI: Generate Audio",
+                        "node": "Piper: Generate Audio",
                         "type": "main",
                         "index": 0
                     }
@@ -336,7 +346,7 @@
                 ]
             ]
         },
-        "OpenAI: Generate Audio": {
+        "Piper: Generate Audio": {
             "main": [
                 [
                     {
