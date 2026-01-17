@@ -1,0 +1,506 @@
+{
+    "name": "Telegram Word Quiz (Scheduled) - FIXED v2",
+    "nodes": [
+        {
+            "parameters": {},
+            "id": "schedule-trigger",
+            "name": "Schedule Trigger (9:00 AM)",
+            "type": "n8n-nodes-base.cron",
+            "typeVersion": 1,
+            "position": [
+                -512,
+                336
+            ]
+        },
+        {
+            "parameters": {
+                "updates": [
+                    "message"
+                ],
+                "additionalFields": {
+                    "commands": {
+                        "command": [
+                            {
+                                "command": "quiz",
+                                "description": "Start Word Quiz"
+                            }
+                        ]
+                    }
+                }
+            },
+            "id": "telegram-command-trigger",
+            "name": "Telegram Trigger (Command)",
+            "type": "n8n-nodes-base.telegramTrigger",
+            "typeVersion": 1,
+            "position": [
+                -512,
+                140
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+                    "name": "Telegram Account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "collection": "words",
+                "options": {
+                    "limit": 1
+                },
+                "query": "={ \"stage\": \"repeat\" }"
+            },
+            "id": "mongo-get-target",
+            "name": "Get Target (Repeat)",
+            "type": "n8n-nodes-base.mongoDb",
+            "typeVersion": 1,
+            "position": [
+                -64,
+                336
+            ],
+            "credentials": {
+                "mongoDb": {
+                    "id": "p5lVP30sDORJCo8v",
+                    "name": "MongoDB account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "collection": "words",
+                "options": {
+                    "limit": 4
+                },
+                "query": "={ \"stage\": \"repeat\" }"
+            },
+            "id": "mongo-get-distractors",
+            "name": "Get Distractors",
+            "type": "n8n-nodes-base.mongoDb",
+            "typeVersion": 1,
+            "position": [
+                304,
+                336
+            ],
+            "credentials": {
+                "mongoDb": {
+                    "id": "p5lVP30sDORJCo8v",
+                    "name": "MongoDB account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const target = $items(\"Get Target (Repeat)\")[0].json;\nconst distractors = $items(\"Get Distractors\").map(i => i.json);\n\n// Create Options\nconst options = [\n  { text: target.translate, callback_data: `check:${target._id}:correct` },\n  ...distractors.map(d => ({ text: d.translate, callback_data: `check:${target._id}:wrong:${d.word}` }))\n];\n\n// Shuffle Options\nfor (let i = options.length - 1; i > 0; i--) {\n  const j = Math.floor(Math.random() * (i + 1));\n  [options[i], options[j]] = [options[j], options[i]];\n}\n\n// Prepare Keyboard (2 columns)\nconst inline_keyboard = [];\nfor (let i = 0; i < options.length; i += 2) {\n  inline_keyboard.push(options.slice(i, i + 2));\n}\n\n// Mask Example\nlet questionText = `🎯 <b>${target.word}</b>`;\nif (target.example) {\n   const maskedExample = target.example.replace(new RegExp(target.word, 'gi'), '_______');\n   questionText += `\\n\\n📝 <i>${maskedExample}</i>`;\n}\nif (target.transcript) {\n    questionText += `\\n\\n🗣 [${target.transcript}]`;\n}\nquestionText += '\\n\\n👇 <i>Choose translation:</i>';\n\n// Audio handling\nlet audioUrl = null;\nif (target.audio) {\n  let url = target.audio;\n  if (url.startsWith('[sound:')) {\n      url = url.slice(7, -1);\n  }\n  audioUrl = url;\n}\n\n// Determine Chat ID\n// Use hardcoded if scheduled, or from trigger if manual\nlet chatId = 940676896; // DEFAULT CHAT ID\ntry {\n    const triggerData = $items(\"Telegram Trigger (Command)\");\n    if (triggerData && triggerData.length > 0 && triggerData[0].json.message) {\n        chatId = triggerData[0].json.message.chat.id;\n    }\n} catch(e) {}\n\nreturn { \n  json: { \n    chatId,\n    questionText,\n    keyboard_rows: { inline_keyboard }, // correctly formatted for n8n replyMarkup parameter\n    audioUrl\n  } \n};"
+            },
+            "id": "code-prepare-message",
+            "name": "Prepare Message",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 1,
+            "position": [
+                656,
+                336
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{ $json.chatId }}",
+                "text": "={{ $json.questionText }}",
+                "parseMode": "HTML",
+                "replyMarkup": "inlineKeyboard",
+                "minRowLength": 2,
+                "inlineKeyboard": "={{ $json.keyboard_rows }}",
+                "additionalFields": {}
+            },
+            "id": "telegram-send-question",
+            "name": "Send Question",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1,
+            "position": [
+                1056,
+                336
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "44mDjW8nHCGChobZ",
+                    "name": "Telegram account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "string": [
+                        {
+                            "value1": "={{ $json.audioUrl }}",
+                            "operation": "isNotEmpty"
+                        }
+                    ]
+                }
+            },
+            "id": "if-audio",
+            "name": "Has Audio?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                860,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "sendAudio",
+                "chatId": "={{ $json.chatId }}",
+                "file": "={{ $json.audioUrl }}",
+                "options": {
+                    "title": "Pronunciation"
+                }
+            },
+            "id": "telegram-send-audio",
+            "name": "Send Audio",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1,
+            "position": [
+                1060,
+                140
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "44mDjW8nHCGChobZ",
+                    "name": "Telegram account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "updates": [
+                    "callback_query"
+                ]
+            },
+            "id": "telegram-callback-trigger",
+            "name": "Telegram Trigger (Callback)",
+            "type": "n8n-nodes-base.telegramTrigger",
+            "typeVersion": 1,
+            "position": [
+                380,
+                540
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "44mDjW8nHCGChobZ",
+                    "name": "Telegram account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const data = $json.callback_query.data;\nconst parts = data.split(':');\nconst action = parts[0];\nconst wordId = parts[1];\nconst result = parts[2]; // 'correct' or 'wrong'\n\nif (action !== 'check') {\n  return { json: { ignore: true } };\n}\n\nreturn { \n  json: { \n    wordId, \n    isCorrect: result === 'correct',\n    chatId: $json.callback_query.message.chat.id,\n    messageId: $json.callback_query.message.message_id,\n    callbackQueryId: $json.callback_query.id\n  } \n};"
+            },
+            "id": "code-parse-callback",
+            "name": "Parse Callback",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 1,
+            "position": [
+                600,
+                540
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "get",
+                "collection": "words",
+                "id": "={{ $json.wordId }}"
+            },
+            "id": "mongo-get-word",
+            "name": "Get Word Info",
+            "type": "n8n-nodes-base.mongoDb",
+            "typeVersion": 1,
+            "position": [
+                820,
+                540
+            ],
+            "credentials": {
+                "mongoDb": {
+                    "id": "p5lVP30sDORJCo8v",
+                    "name": "MongoDB account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "boolean": [
+                        {
+                            "value1": "={{ $node[\"Parse Callback\"].json.isCorrect }}",
+                            "value2": true
+                        }
+                    ]
+                }
+            },
+            "id": "if-answer-correct",
+            "name": "Is Correct?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 1,
+            "position": [
+                1040,
+                540
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "collection": "words",
+                "id": "={{ $json._id }}",
+                "updateKey": "={{ {\"stage\": \"new\"} }}"
+            },
+            "id": "mongo-update-new",
+            "name": "Set Stage New",
+            "type": "n8n-nodes-base.mongoDb",
+            "typeVersion": 1,
+            "position": [
+                1260,
+                440
+            ],
+            "credentials": {
+                "mongoDb": {
+                    "id": "p5lVP30sDORJCo8v",
+                    "name": "MongoDB account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "editMessageText",
+                "chatId": "={{ $node[\"Parse Callback\"].json.chatId }}",
+                "messageId": "={{ $node[\"Parse Callback\"].json.messageId }}",
+                "text": "=✅ <b>Correct!</b>\n\n🎯 <b>{{ $json.word }}</b> — {{ $json.translate }}\n\nTap /quiz for next word.",
+                "parseMode": "HTML",
+                "replyMarkup": "inlineKeyboard",
+                "inlineKeyboard": "={{ {\"inline_keyboard\": [[{\"text\": \"Next Word ➡️\", \"callback_data\": \"cmd:quiz\"}]]} }}"
+            },
+            "id": "telegram-edit-correct",
+            "name": "Edit Correct",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1,
+            "position": [
+                1480,
+                440
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "44mDjW8nHCGChobZ",
+                    "name": "Telegram account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "editMessageText",
+                "chatId": "={{ $node[\"Parse Callback\"].json.chatId }}",
+                "messageId": "={{ $node[\"Parse Callback\"].json.messageId }}",
+                "text": "=❌ <b>Wrong!</b>\n\n🎯 <b>{{ $json.word }}</b> — {{ $json.translate }}\n\nDon't worry, try again later!",
+                "parseMode": "HTML",
+                "replyMarkup": "inlineKeyboard",
+                "inlineKeyboard": "={{ {\"inline_keyboard\": [[{\"text\": \"Next Word ➡️\", \"callback_data\": \"cmd:quiz\"}]]} }}"
+            },
+            "id": "telegram-edit-wrong",
+            "name": "Edit Wrong",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1,
+            "position": [
+                1480,
+                640
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "44mDjW8nHCGChobZ",
+                    "name": "Telegram account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "answerCallbackQuery",
+                "callbackQueryId": "={{ $node[\"Parse Callback\"].json.callbackQueryId }}"
+            },
+            "id": "telegram-answer-callback",
+            "name": "Answer Callback",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1,
+            "position": [
+                1700,
+                540
+            ],
+            "credentials": {
+                "telegramApi": {
+                    "id": "44mDjW8nHCGChobZ",
+                    "name": "Telegram account"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Schedule Trigger (9:00 AM)": {
+            "main": [
+                [
+                    {
+                        "node": "Get Target (Repeat)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Telegram Trigger (Command)": {
+            "main": [
+                [
+                    {
+                        "node": "Get Target (Repeat)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Target (Repeat)": {
+            "main": [
+                [
+                    {
+                        "node": "Get Distractors",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Distractors": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Message": {
+            "main": [
+                [
+                    {
+                        "node": "Has Audio?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has Audio?": {
+            "main": [
+                [
+                    {
+                        "node": "Send Audio",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Send Question",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Send Question",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Telegram Trigger (Callback)": {
+            "main": [
+                [
+                    {
+                        "node": "Parse Callback",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse Callback": {
+            "main": [
+                [
+                    {
+                        "node": "Get Word Info",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Get Word Info": {
+            "main": [
+                [
+                    {
+                        "node": "Is Correct?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Correct?": {
+            "main": [
+                [
+                    {
+                        "node": "Set Stage New",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Wrong",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Set Stage New": {
+            "main": [
+                [
+                    {
+                        "node": "Edit Correct",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Edit Correct": {
+            "main": [
+                [
+                    {
+                        "node": "Answer Callback",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Edit Wrong": {
+            "main": [
+                [
+                    {
+                        "node": "Answer Callback",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
