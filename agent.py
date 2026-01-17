@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -38,9 +39,35 @@ logger.info("Google API Key found")
 # ========== REMOVED LEGACY FETCH ==========
 # fetch_lesson_from_n8n moved to aitools.news.fetch_raw_news
 
+# ========== ПОМОЩНИК ПАРСИНГА ==========
+def parse_lesson_content(content: str):
+    """
+    Parses the lesson content into Vocabulary Focus and News Digest.
+    """
+    vocab_section = ""
+    digest_section = content
+
+    # Look for Vocabulary Focus
+    vocab_match = re.search(r"Vocabulary Focus:(.*?)(?=---START_OF_DIGEST---|$)", content, re.DOTALL | re.IGNORECASE)
+    if vocab_match:
+        vocab_section = vocab_match.group(1).strip()
+
+    # Look for Digest
+    digest_match = re.search(r"---START_OF_DIGEST---(.*)", content, re.DOTALL)
+    if digest_match:
+        digest_section = digest_match.group(1).strip()
+    
+    return vocab_section, digest_section
+
 # ========== СИСТЕМНЫЙ ПРОМПТ ==========
 AGENT_INSTRUCTION = """
 You are a friendly English Tutor named Aoede. Your goal is to help the user practice English.
+
+ACTIVITIES:
+1. Vocabulary Review: If 'Vocabulary Focus' is provided, you can help the user practice these words. 
+   - Ask the user to translate a word or phrase.
+   - Ask the user to pronounce a word. Since you are a voice agent, listen carefully to their pronunciation and provide feedback.
+2. News Discussion: Discuss the news topics in the 'News Digest' section.
 
 CRITICAL VOICE RULES (STRICT):
 1. NEVER USE BOLD TEXT (**). 
@@ -55,7 +82,11 @@ If you don't have news, just start a friendly conversation.
 """
 
 SESSION_INSTRUCTION = """
-Hello! Greet the user naturally. If you see news titles below, list them and ask which one to discuss. If there are no news items, just say hello and ask how they are. Do not use bold text or headers.
+Hello! Greet the user naturally. 
+If you see 'Vocabulary Focus' below, mention that you have some new words to review AND some news stories. Ask the user if they'd like to start with the vocabulary practice or jump straight into the news.
+If there is NO 'Vocabulary Focus' but there are news stories, just list the news titles and ask which one to discuss.
+If there's nothing, just say hello and ask how they're doing. 
+Do not use bold text or headers.
 """
 
 # ========== GEMINI AGENT CLASS ==========
@@ -125,16 +156,18 @@ async def entrypoint(ctx: JobContext):
 
     # 2. Setup the agent and fetch initial context
     lesson_text = await fetch_raw_news()
-    # from aitools.mongo import mongo_helper
-    # approved_words = await mongo_helper.get_checked_words()
+    
+    vocab, digest = parse_lesson_content(lesson_text)
     
     context_parts = []
-    if news_text := lesson_text.strip():
-        context_parts.append(f"TODAY'S NEWS FOR CONTEXT:\n{news_text}")
+    if vocab:
+        context_parts.append(f"VOCABULARY FOCUS (Review these with the user if they choose):\n{vocab}")
     
-    # if approved_words:
-    #     words_str = "\n".join([f"- {w['word']} ({w['translate']})" for w in approved_words])
-    #     context_parts.append(f"USER APPROVED THESE WORDS FOR PRACTICE TODAY (PRIORITY):\n{words_str}")
+    if digest:
+        context_parts.append(f"TODAY'S NEWS DIGEST:\n{digest}")
+    elif news_text := lesson_text.strip():
+        # Fallback if markers are missing
+        context_parts.append(f"TODAY'S CONTENT:\n{news_text}")
 
     custom_instruction = AGENT_INSTRUCTION
     if context_parts:

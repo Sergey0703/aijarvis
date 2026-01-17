@@ -76,7 +76,7 @@ def parse_csv_and_find_new_words(csv_file="ling.csv", dry_run=True):
                     
                     # Дополнительные поля из CSV (если есть)
                     if len(row) > 3 and row[3].strip().strip('"'):
-                        new_word_doc["transcription"] = row[3].strip().strip('"')
+                        new_word_doc["transcript"] = row[3].strip().strip('"')
                     
                     if len(row) > 4 and row[4].strip().strip('"'):
                         new_word_doc["example"] = row[4].strip().strip('"')
