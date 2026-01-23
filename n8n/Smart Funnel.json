@@ -172,6 +172,36 @@
       ],
       "id": "f8648146-db23-4f05-a320-9fade985fed2",
       "name": "Upsert row(s)"
+    },
+    {
+      "parameters": {
+        "operation": "deleteRows",
+        "dataTableId": {
+          "__rl": true,
+          "value": "MWNgETzBSi4cAIFo",
+          "mode": "list",
+          "cachedResultName": "News",
+          "cachedResultUrl": "/projects/jNVg0G6i9vrm7uSd/datatables/MWNgETzBSi4cAIFo"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "createdAt",
+              "condition": "lt",
+              "keyValue": "={{ $today }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        560,
+        880
+      ],
+      "id": "7bcdf5b5-e5a5-43f1-998d-dca22f31ff70",
+      "name": "Delete row(s)"
     }
   ],
   "pinData": {},
@@ -208,6 +238,17 @@
           }
         ]
       ]
+    },
+    "Upsert row(s)": {
+      "main": [
+        [
+          {
+            "node": "Delete row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -215,7 +256,7 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "a74ac9e6-ab56-4379-9c59-d8589e134c8e",
+  "versionId": "647cf549-441d-4fc5-be66-1a4369d34f8c",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "6cb256a7bbd0f6147fbf058931ef9d6e6b74163148390272817b18c9ab14a365"

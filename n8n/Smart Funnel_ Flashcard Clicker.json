@@ -9,7 +9,8 @@
               "triggerAtHour": 9
             },
             {
-              "triggerAtHour": 18
+              "triggerAtHour": 9,
+              "triggerAtMinute": 15
             }
           ]
         }
@@ -27,7 +28,7 @@
       "parameters": {
         "collection": "words",
         "options": {
-          "limit": 50,
+          "limit": 100,
           "sort": "{ \"trainDate\": 1 }"
         },
         "query": "={}"
@@ -91,117 +92,6 @@
     },
     {
       "parameters": {
-        "updates": [
-          "callback_query"
-        ],
-        "additionalFields": {}
-      },
-      "id": "b1255805-fc32-47fc-84ce-65cc320ff8ab",
-      "name": "Telegram: Button Trigger",
-      "type": "n8n-nodes-base.telegramTrigger",
-      "typeVersion": 1.1,
-      "position": [
-        1120,
-        1040
-      ],
-      "webhookId": "edc352f1-924e-4b98-9248-74e059769f65",
-      "credentials": {
-        "telegramApi": {
-          "id": "44mDjW8nHCGChobZ",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const data = $json.callback_query.data;\nif (!data) return [];\n\nconst [action, id] = data.split('|');\nreturn [{ json: { action, _id: id, original: $json } }];"
-      },
-      "id": "3873604a-7e6c-4b76-af9d-1e1220dc51d4",
-      "name": "Parse Callback",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1328,
-        1040
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "update",
-        "collection": "words",
-        "updateKey": "_id",
-        "fields": "=stage",
-        "options": {}
-      },
-      "id": "75630ed6-eb70-4aad-99be-ffe553feb542",
-      "name": "MongoDB: Update Stage",
-      "type": "n8n-nodes-base.mongoDb",
-      "typeVersion": 1.1,
-      "position": [
-        1968,
-        1136
-      ],
-      "alwaysOutputData": false,
-      "credentials": {
-        "mongoDb": {
-          "id": "p5lVP30sDORJCo8v",
-          "name": "MongoDB account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "74e4534c-e4ae-45c1-b6d6-62448cd6b5bf",
-              "name": "stage",
-              "value": "repeat",
-              "type": "string"
-            },
-            {
-              "id": "34c80ec7-fd3d-4f19-9054-9363b1bfcef3",
-              "name": "_id",
-              "value": "={{ $json._id }}",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        1744,
-        1136
-      ],
-      "id": "207e2065-3a8e-4ef0-87e0-4c2cb94714b3",
-      "name": "Edit Fields"
-    },
-    {
-      "parameters": {
-        "resource": "callback",
-        "queryId": "={{ $('Telegram: Button Trigger').item.json.callback_query.id }}",
-        "additionalFields": {}
-      },
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        2192,
-        1136
-      ],
-      "id": "6e44ad75-0856-49f7-b6a6-3d27f02d6e01",
-      "name": "Answer Query a callback",
-      "webhookId": "429ccdb2-8e30-42e0-8157-963e511d65e0",
-      "credentials": {
-        "telegramApi": {
-          "id": "44mDjW8nHCGChobZ",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
         "operation": "update",
         "collection": "words",
         "updateKey": "_id",
@@ -230,14 +120,14 @@
             {
               "id": "2442de0e-6fea-4693-905a-ee09fc2e7310",
               "name": "stage",
-              "value": "checked",
+              "value": "new",
               "type": "string"
             },
             {
               "id": "177480de-83de-4668-817d-cd880bc88cac",
               "name": "trainDate",
-              "value": "={{ $now.toISO() }}",
-              "type": "string"
+              "value": "={{ new Date() }}",
+              "type": "object"
             }
           ]
         },
@@ -278,50 +168,6 @@
         ]
       ]
     },
-    "Telegram: Button Trigger": {
-      "main": [
-        [
-          {
-            "node": "Parse Callback",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Callback": {
-      "main": [
-        [
-          {
-            "node": "Edit Fields",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "MongoDB: Update Stage": {
-      "main": [
-        [
-          {
-            "node": "Answer Query a callback",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Edit Fields": {
-      "main": [
-        [
-          {
-            "node": "MongoDB: Update Stage",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Update documents": {
       "main": [
         [
@@ -355,7 +201,7 @@
     "executionOrder": "v1",
     "availableInMCP": false
   },
-  "versionId": "0946acee-26c9-4cd6-9fd7-ec6669796eec",
+  "versionId": "76a0ee76-0e2e-46fa-97c5-1b347d5ffbff",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "6cb256a7bbd0f6147fbf058931ef9d6e6b74163148390272817b18c9ab14a365"

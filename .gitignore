@@ -6,6 +6,7 @@
 .env
 *.env
 !.env.example
+.ssh_hetzner_key
 
 # Python
 __pycache__/
@@ -51,6 +52,13 @@ logs/
 # Claude Code
 .claude/
 claude.md
+.mcp.json
+
+# SSH Keys
+.ssh_*
+*.pem
+id_rsa*
+id_ed25519*
 
 # N8N Local Data
 n8n_data/

@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Words to Review</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-hint-color: #999999;
+            --tg-theme-link-color: #2678b6;
+            --tg-theme-button-color: #50a8eb;
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-secondary-bg-color: #f0f0f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            padding: 12px;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .word-count {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px 20px;
+            color: #e74c3c;
+        }
+
+        .word-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .word-card {
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 12px;
+            padding: 16px;
+            transition: transform 0.1s ease;
+        }
+
+        .word-card:active {
+            transform: scale(0.98);
+        }
+
+        .word-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 6px;
+        }
+
+        .word-text {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--tg-theme-text-color);
+        }
+
+        .audio-btn {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s;
+        }
+
+        .audio-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .audio-btn:active:not(:disabled) {
+            opacity: 0.7;
+        }
+
+        .audio-btn.playing {
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
+
+        .transcript {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+
+        .translate {
+            font-size: 16px;
+            color: var(--tg-theme-text-color);
+            opacity: 0.85;
+        }
+
+        .example {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+            font-style: italic;
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.95);
+        }
+
+        .refresh-btn.spinning {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .word-card.highlighted {
+            border: 2px solid var(--tg-theme-button-color);
+            background: color-mix(in srgb, var(--tg-theme-button-color) 10%, var(--tg-theme-secondary-bg-color));
+        }
+
+        /* Date groups */
+        .date-groups {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .date-group {
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .date-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .date-group-header:active {
+            background: rgba(0,0,0,0.05);
+        }
+
+        .date-group-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .date-group-date {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--tg-theme-text-color);
+        }
+
+        .date-group-count {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .date-group-arrow {
+            font-size: 20px;
+            color: var(--tg-theme-hint-color);
+            transition: transform 0.2s;
+        }
+
+        .date-group.expanded .date-group-arrow {
+            transform: rotate(90deg);
+        }
+
+        .date-group-content {
+            display: none;
+            padding: 0 16px 16px 16px;
+        }
+
+        .date-group.expanded .date-group-content {
+            display: block;
+        }
+
+        .group-autoplay-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .group-autoplay-btn {
+            flex: 1;
+            padding: 10px 12px;
+            background: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            border: 1px solid var(--tg-theme-hint-color);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .group-autoplay-btn.active {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border-color: var(--tg-theme-button-color);
+        }
+
+        .group-autoplay-btn:active {
+            transform: scale(0.98);
+        }
+
+        .group-word-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .group-word-card {
+            background: var(--tg-theme-bg-color);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .group-word-card.highlighted {
+            border: 2px solid var(--tg-theme-button-color);
+            background: color-mix(in srgb, var(--tg-theme-button-color) 10%, var(--tg-theme-bg-color));
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Words to Review</h1>
+        <span class="word-count" id="wordCount"></span>
+    </div>
+
+    <div id="content">
+        <div class="loading">Loading words...</div>
+    </div>
+
+    <button class="refresh-btn" id="refreshBtn" onclick="resetAndLoad()">&#x21bb;</button>
+
+    <script>
+        const API_URL = 'https://n8n.aimediaflow.net/webhook/words-repeat';
+
+        // State
+        let dateGroups = [];
+        let totalWords = 0;
+        let isLoading = false;
+        let expandedGroup = null; // date string of expanded group
+        let activeGroupDate = null; // date of group with active autoplay
+
+        // Initialize Telegram WebApp
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+
+            // Apply Telegram theme
+            document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
+            document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
+            document.documentElement.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color || '#999999');
+            document.documentElement.style.setProperty('--tg-theme-link-color', tg.themeParams.link_color || '#2678b6');
+            document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#50a8eb');
+            document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
+            document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#f0f0f0');
+        }
+
+        let currentPlayingBtn = null;
+        let autoplayMode = null; // null, 'english', 'both'
+        let autoplayIndex = 0;
+        let autoplayTimeout = null;
+        let isAutoplayPaused = false;
+
+        // Single reusable Audio object for Telegram compatibility
+        let sharedAudio = new Audio();
+        sharedAudio.volume = 1.0;
+        let audioUnlocked = false;
+
+        function resetAndLoad() {
+            dateGroups = [];
+            totalWords = 0;
+            expandedGroup = null;
+            stopAutoplay();
+            loadWords();
+        }
+
+        async function loadWords() {
+            if (isLoading) return;
+            isLoading = true;
+
+            const content = document.getElementById('content');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const wordCount = document.getElementById('wordCount');
+
+            refreshBtn.classList.add('spinning');
+            content.innerHTML = '<div class="loading">Loading words...</div>';
+
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('Failed to fetch');
+
+                const data = await response.json();
+                dateGroups = data.dateGroups || [];
+                totalWords = data.total || 0;
+
+                wordCount.textContent = totalWords;
+
+                if (dateGroups.length === 0) {
+                    content.innerHTML = '<div class="loading">No words to review</div>';
+                    return;
+                }
+
+                renderGroups();
+
+            } catch (error) {
+                console.error('Error:', error);
+                content.innerHTML = '<div class="error">Failed to load words.<br>Please try again.</div>';
+            } finally {
+                isLoading = false;
+                refreshBtn.classList.remove('spinning');
+            }
+        }
+
+        function renderGroups() {
+            const content = document.getElementById('content');
+
+            let html = '<div class="date-groups">';
+
+            dateGroups.forEach((group, groupIndex) => {
+                const isExpanded = expandedGroup === group.date;
+                const formattedDate = formatDate(group.date);
+
+                html += `
+                    <div class="date-group ${isExpanded ? 'expanded' : ''}" data-date="${group.date}" data-index="${groupIndex}">
+                        <div class="date-group-header" data-action="toggle" data-gidx="${groupIndex}">
+                            <div class="date-group-info">
+                                <span class="date-group-date">${formattedDate}</span>
+                                <span class="date-group-count">${group.count} слов</span>
+                            </div>
+                            <span class="date-group-arrow">▶</span>
+                        </div>
+                        <div class="date-group-content">
+                            ${isExpanded ? renderGroupContent(group, groupIndex) : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            content.innerHTML = html;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr || dateStr === 'unknown') return 'Без даты';
+            const date = new Date(dateStr);
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            if (dateStr === today.toISOString().split('T')[0]) {
+                return 'Сегодня';
+            } else if (dateStr === yesterday.toISOString().split('T')[0]) {
+                return 'Вчера';
+            }
+
+            return date.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'long',
+                year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+            });
+        }
+
+        function toggleGroup(date) {
+            if (expandedGroup === date) {
+                expandedGroup = null;
+                stopAutoplay();
+            } else {
+                stopAutoplay();
+                expandedGroup = date;
+            }
+            renderGroups();
+        }
+
+        function renderGroupContent(group, groupIndex) {
+            const isActiveGroup = activeGroupDate === group.date;
+
+            let html = `
+                <div class="group-autoplay-controls">
+                    <button class="group-autoplay-btn ${isActiveGroup && autoplayMode === 'english' ? 'active' : ''}"
+                            data-action="autoplay" data-gidx="${groupIndex}" data-mode="english">
+                        ▶ English Only
+                    </button>
+                    <button class="group-autoplay-btn ${isActiveGroup && autoplayMode === 'both' ? 'active' : ''}"
+                            data-action="autoplay" data-gidx="${groupIndex}" data-mode="both">
+                        ▶ Eng + Rus
+                    </button>
+                </div>
+                <div class="group-word-list">
+            `;
+
+            group.words.forEach((word, index) => {
+                html += renderWordCard(word, groupIndex, index);
+            });
+
+            html += '</div>';
+            return html;
+        }
+
+        function renderWordCard(word, groupIndex, index) {
+            const transcript = word.transcript && word.transcript !== 'None' ? `/${word.transcript}/` : '';
+            const audioUrl = word.audio || '';
+            const group = dateGroups[groupIndex];
+            const isHighlighted = activeGroupDate === group.date && autoplayIndex === index;
+
+            return `
+                <div class="group-word-card ${isHighlighted ? 'highlighted' : ''}" data-index="${index}">
+                    <div class="word-header">
+                        <span class="word-text">${escapeHtml(word.word)}</span>
+                        <button class="audio-btn" id="audio-btn-${groupIndex}-${index}"
+                                data-action="play" data-url="${escapeHtml(audioUrl)}" data-gidx="${groupIndex}" data-widx="${index}">
+                            &#x1F50A;
+                        </button>
+                    </div>
+                    ${transcript ? `<div class="transcript">${escapeHtml(transcript)}</div>` : ''}
+                    <div class="translate">${escapeHtml(word.translate)}</div>
+                    ${word.example ? `<div class="example">"${escapeHtml(word.example)}"</div>` : ''}
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        let currentAudio = null;
+
+        function playAudio(url, groupDate, wordIndex) {
+            if (!url) return;
+
+            // Stop current audio if playing
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+                if (currentPlayingBtn) {
+                    currentPlayingBtn.classList.remove('playing');
+                }
+            }
+
+            // Haptic feedback
+            if (tg?.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+
+            const groupIndex = dateGroups.findIndex(g => g.date === groupDate);
+            const btn = document.getElementById(`audio-btn-${groupIndex}-${wordIndex}`);
+            currentPlayingBtn = btn;
+            if (btn) btn.classList.add('playing');
+
+            currentAudio = new Audio(url);
+            currentAudio.volume = 1.0;
+
+            currentAudio.onended = () => {
+                if (btn) btn.classList.remove('playing');
+                currentPlayingBtn = null;
+            };
+
+            currentAudio.onerror = (err) => {
+                console.error('Audio playback failed:', err);
+                if (btn) btn.classList.remove('playing');
+                currentPlayingBtn = null;
+                if (tg?.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('error');
+                }
+            };
+
+            currentAudio.play().catch(err => {
+                console.error('Audio play error:', err);
+                if (btn) btn.classList.remove('playing');
+                currentPlayingBtn = null;
+            });
+        }
+
+        // Unlock audio for Telegram - must be called from user gesture
+        function unlockAudio() {
+            if (audioUnlocked) return Promise.resolve();
+
+            return new Promise((resolve) => {
+                // Play silent audio to unlock
+                sharedAudio.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAAAwAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV////////////////////////////////////////////AAAAAExhdmM1OC4xMwAAAAAAAAAAAAAAACQAAAAAAAAAAQGwBPBbAAAAAAD/4xjEAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV/+MYxDsAAADSAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+                sharedAudio.volume = 0.01;
+                sharedAudio.play().then(() => {
+                    audioUnlocked = true;
+                    sharedAudio.pause();
+                    sharedAudio.volume = 1;
+                    resolve();
+                }).catch(() => {
+                    resolve(); // Continue anyway
+                });
+            });
+        }
+
+        // Autoplay functions for groups
+        async function toggleGroupAutoplay(groupDate, mode) {
+            if (activeGroupDate === groupDate && autoplayMode === mode) {
+                // Stop autoplay
+                stopAutoplay();
+            } else {
+                // Start autoplay - first unlock audio from this user gesture
+                await unlockAudio();
+                stopAutoplay();
+                activeGroupDate = groupDate;
+                autoplayMode = mode;
+                autoplayIndex = 0;
+                updateGroupContent(groupDate);
+                playNextWord();
+            }
+        }
+
+        function updateGroupContent(groupDate) {
+            const groupIndex = dateGroups.findIndex(g => g.date === groupDate);
+            if (groupIndex === -1) return;
+
+            const group = dateGroups[groupIndex];
+            const groupEl = document.querySelector(`.date-group[data-index="${groupIndex}"]`);
+            if (!groupEl) return;
+
+            const contentEl = groupEl.querySelector('.date-group-content');
+            if (contentEl) {
+                contentEl.innerHTML = renderGroupContent(group, groupIndex);
+            }
+        }
+
+        function stopAutoplay() {
+            const prevGroupDate = activeGroupDate;
+            autoplayMode = null;
+            activeGroupDate = null;
+            isAutoplayPaused = false;
+            if (autoplayTimeout) {
+                clearTimeout(autoplayTimeout);
+                autoplayTimeout = null;
+            }
+            // Stop shared audio
+            sharedAudio.pause();
+            sharedAudio.onended = null;
+            sharedAudio.onerror = null;
+
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            if (window.speechSynthesis && window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
+            // Remove highlights
+            document.querySelectorAll('.group-word-card.highlighted').forEach(el => {
+                el.classList.remove('highlighted');
+            });
+            // Update buttons
+            if (prevGroupDate) {
+                updateGroupContent(prevGroupDate);
+            }
+        }
+
+        function highlightWord(groupDate, index) {
+            document.querySelectorAll('.group-word-card.highlighted').forEach(el => {
+                el.classList.remove('highlighted');
+            });
+            const groupIndex = dateGroups.findIndex(g => g.date === groupDate);
+            if (groupIndex === -1) return;
+
+            const groupEl = document.querySelector(`.date-group[data-index="${groupIndex}"]`);
+            if (!groupEl) return;
+
+            const cards = groupEl.querySelectorAll('.group-word-card');
+            if (cards[index]) {
+                cards[index].classList.add('highlighted');
+                cards[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function playNextWord() {
+            if (!autoplayMode || !activeGroupDate) {
+                stopAutoplay();
+                return;
+            }
+
+            const group = dateGroups.find(g => g.date === activeGroupDate);
+            if (!group) {
+                stopAutoplay();
+                return;
+            }
+
+            // Loop back to start if reached end
+            if (autoplayIndex >= group.words.length) {
+                autoplayIndex = 0;
+            }
+
+            const word = group.words[autoplayIndex];
+            highlightWord(activeGroupDate, autoplayIndex);
+
+            if (autoplayMode === 'english') {
+                // English only: word -> 1s pause -> next word
+                playWordAudioAutoplay(word.audio, () => {
+                    autoplayTimeout = setTimeout(() => {
+                        autoplayIndex++;
+                        playNextWord();
+                    }, 1000);
+                });
+            } else if (autoplayMode === 'both') {
+                // English + Russian: word -> 1s -> translation -> 2s -> next word
+                playWordAudioAutoplay(word.audio, () => {
+                    autoplayTimeout = setTimeout(() => {
+                        speakRussian(word.translate, () => {
+                            autoplayTimeout = setTimeout(() => {
+                                autoplayIndex++;
+                                playNextWord();
+                            }, 2000);
+                        });
+                    }, 1000);
+                });
+            }
+        }
+
+        function playWordAudioAutoplay(url, onComplete) {
+            if (!url || !autoplayMode) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            // Use shared audio object for Telegram compatibility
+            sharedAudio.pause();
+            sharedAudio.onended = null;
+            sharedAudio.onerror = null;
+
+            sharedAudio.src = url;
+            sharedAudio.currentTime = 0;
+
+            sharedAudio.onended = () => {
+                if (onComplete) onComplete();
+            };
+
+            sharedAudio.onerror = () => {
+                if (onComplete) onComplete();
+            };
+
+            sharedAudio.play().catch(() => {
+                if (onComplete) onComplete();
+            });
+        }
+
+        function speakRussian(text, onComplete) {
+            if (!text || !window.speechSynthesis) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            try {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ru-RU';
+                utterance.rate = 0.9;
+
+                utterance.onend = () => {
+                    if (onComplete) onComplete();
+                };
+
+                utterance.onerror = () => {
+                    if (onComplete) onComplete();
+                };
+
+                window.speechSynthesis.speak(utterance);
+            } catch(e) {
+                if (onComplete) onComplete();
+            }
+        }
+
+        // Handle action from element - use numeric indices instead of date strings
+        function handleAction(target) {
+            if (!target) return false;
+
+            const action = target.getAttribute('data-action');
+            if (!action) return false;
+
+            const gidx = target.getAttribute('data-gidx');
+
+            if (action === 'toggle') {
+                const groupIndex = parseInt(gidx);
+                const group = dateGroups[groupIndex];
+                if (group) {
+                    toggleGroup(group.date);
+                }
+                return true;
+            } else if (action === 'autoplay') {
+                const groupIndex = parseInt(gidx);
+                const group = dateGroups[groupIndex];
+                const mode = target.getAttribute('data-mode');
+                if (group) {
+                    toggleGroupAutoplay(group.date, mode);
+                }
+                return true;
+            } else if (action === 'play') {
+                const url = target.getAttribute('data-url');
+                const groupIndex = parseInt(target.getAttribute('data-gidx'));
+                const wordIndex = parseInt(target.getAttribute('data-widx'));
+                const group = dateGroups[groupIndex];
+                if (group) {
+                    playAudio(url, group.date, wordIndex);
+                }
+                return true;
+            }
+            return false;
+        }
+
+        // Find closest element with data-action
+        function findActionElement(el) {
+            while (el && el !== document.body) {
+                if (el.getAttribute && el.getAttribute('data-action')) {
+                    return el;
+                }
+                el = el.parentElement;
+            }
+            return null;
+        }
+
+        // Event delegation
+        function onInteraction(e) {
+            const target = findActionElement(e.target);
+            if (target && handleAction(target)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+
+        // Use capturing phase for better compatibility
+        document.addEventListener('click', function(e) {
+            onInteraction(e);
+        }, true);
+
+        // Also listen on touchend for Telegram WebView
+        let touchMoved = false;
+        document.addEventListener('touchstart', function() {
+            touchMoved = false;
+        }, true);
+        document.addEventListener('touchmove', function() {
+            touchMoved = true;
+        }, true);
+        document.addEventListener('touchend', function(e) {
+            if (!touchMoved) {
+                const target = findActionElement(e.target);
+                if (target && handleAction(target)) {
+                    e.preventDefault();
+                }
+            }
+        }, true);
+
+        // Load words on start
+        loadWords();
+    </script>
+</body>
+</html>

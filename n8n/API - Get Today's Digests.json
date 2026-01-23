@@ -1,5 +1,5 @@
 {
-  "name": "API - Get Today's News",
+  "name": "API - Get Today's Digests",
   "nodes": [
     {
       "parameters": {
@@ -7,13 +7,13 @@
         "responseMode": "lastNode",
         "options": {}
       },
-      "id": "38a04736-5f92-4b09-9bc6-ff4ef1a6e442",
+      "id": "661f647f-e039-4769-89da-86aae98892db",
       "name": "Webhook GET",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        -272,
-        -80
+        0,
+        0
       ],
       "webhookId": "0cad0ab0-c35d-43a4-8c60-e2c50544fa7c"
     },
@@ -22,9 +22,10 @@
         "operation": "get",
         "dataTableId": {
           "__rl": true,
-          "value": "MWNgETzBSi4cAIFo",
+          "value": "JnVde1xTjaVHMlMx",
           "mode": "list",
-          "cachedResultName": "News"
+          "cachedResultName": "DailyDigests",
+          "cachedResultUrl": "/projects/jNVg0G6i9vrm7uSd/datatables/JnVde1xTjaVHMlMx"
         },
         "matchType": "allConditions",
         "filters": {
@@ -37,13 +38,13 @@
           ]
         }
       },
-      "id": "f906d80d-3668-48f3-b84a-19759d2928ef",
+      "id": "01d47436-6b21-4d09-a0f6-bd7c889c98cc",
       "name": "Get News Table",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1,
       "position": [
-        -48,
-        -80
+        224,
+        0
       ]
     },
     {
@@ -51,10 +52,10 @@
         "operation": "update",
         "dataTableId": {
           "__rl": true,
-          "value": "MWNgETzBSi4cAIFo",
+          "value": "JnVde1xTjaVHMlMx",
           "mode": "list",
-          "cachedResultName": "News",
-          "cachedResultUrl": "/projects/jNVg0G6i9vrm7uSd/datatables/MWNgETzBSi4cAIFo"
+          "cachedResultName": "DailyDigests",
+          "cachedResultUrl": "/projects/jNVg0G6i9vrm7uSd/datatables/JnVde1xTjaVHMlMx"
         },
         "filters": {
           "conditions": [
@@ -66,7 +67,6 @@
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "isDelivered": true,
             "deliveredAt": "={{ $now }}"
           },
           "matchingColumns": [],
@@ -129,7 +129,7 @@
               "display": true,
               "type": "boolean",
               "readOnly": false,
-              "removed": false
+              "removed": true
             },
             {
               "id": "deliveredAt",
@@ -150,10 +150,10 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        624,
-        -80
+        1104,
+        0
       ],
-      "id": "870621ff-42cb-456f-80e6-f26da2fb47c8",
+      "id": "5f9532c4-642b-41b6-8902-53354ffbcd8a",
       "name": "Update row(s)"
     },
     {
@@ -164,25 +164,22 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1072,
-        -80
+        1552,
+        0
       ],
-      "id": "d3793923-708f-4a88-ab8e-526af71a8a75",
+      "id": "36e139cb-4ee3-45ed-89d6-5d678cd13b0d",
       "name": "Respond to Webhook"
     },
     {
-      "parameters": {
-        "aggregate": "aggregateAllItemData",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.aggregate",
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
       "typeVersion": 1,
       "position": [
-        848,
-        -80
+        752,
+        0
       ],
-      "id": "886c6d50-738d-4204-a85f-fe4fce6ca10c",
-      "name": "Aggregate"
+      "id": "b3596a89-dde0-4c09-b1f5-ad6193b2f264",
+      "name": "Limit"
     },
     {
       "parameters": {
@@ -198,24 +195,11 @@
       "type": "n8n-nodes-base.sort",
       "typeVersion": 1,
       "position": [
-        176,
-        -80
+        480,
+        0
       ],
-      "id": "ef088f01-692f-46a8-8413-52fce4ae122f",
+      "id": "656df0a3-5a6d-48a2-9cf1-c9cfeb1540aa",
       "name": "Sort"
-    },
-    {
-      "parameters": {
-        "maxItems": 2
-      },
-      "type": "n8n-nodes-base.limit",
-      "typeVersion": 1,
-      "position": [
-        400,
-        -80
-      ],
-      "id": "a198791a-dc66-427e-ae85-485926d48e7c",
-      "name": "Limit"
     }
   ],
   "pinData": {},
@@ -246,29 +230,7 @@
       "main": [
         [
           {
-            "node": "Aggregate",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Aggregate": {
-      "main": [
-        [
-          {
             "node": "Respond to Webhook",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sort": {
-      "main": [
-        [
-          {
-            "node": "Limit",
             "type": "main",
             "index": 0
           }
@@ -285,19 +247,28 @@
           }
         ]
       ]
+    },
+    "Sort": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1",
-    "availableInMCP": false,
-    "timeSavedMode": "fixed",
-    "callerPolicy": "workflowsFromSameOwner"
+    "availableInMCP": false
   },
-  "versionId": "7c2d253f-ed68-4e32-8298-79c1072f8f3a",
+  "versionId": "3b2f1daa-3efe-4b2f-b000-5903d5aee635",
   "meta": {
     "instanceId": "6cb256a7bbd0f6147fbf058931ef9d6e6b74163148390272817b18c9ab14a365"
   },
-  "id": "hcue8mjNt49UqJ6B",
+  "id": "1ZHWSpDLJA3MMrIP",
   "tags": []
 }
