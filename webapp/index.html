@@ -47,11 +47,22 @@
             color: var(--tg-theme-hint-color);
         }
 
+        /* Sticky header with tabs and autoplay controls */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--tg-theme-bg-color);
+            padding-bottom: 8px;
+            margin: -12px -12px 12px -12px;
+            padding: 12px 12px 8px 12px;
+        }
+
         /* Tabs */
         .tabs {
             display: flex;
             gap: 0;
-            margin-bottom: 16px;
+            margin-bottom: 0;
             border-radius: 10px;
             overflow: hidden;
             background: var(--tg-theme-secondary-bg-color);
@@ -82,7 +93,7 @@
         .autoplay-controls {
             display: flex;
             gap: 8px;
-            margin-bottom: 16px;
+            margin-top: 12px;
         }
 
         .autoplay-btn {
@@ -358,9 +369,22 @@
         <span class="word-count" id="wordCount"></span>
     </div>
 
-    <div class="tabs">
-        <button class="tab-btn active" data-tab="grouped" data-action="tab">По датам</button>
-        <button class="tab-btn" data-tab="random" data-action="tab">Случайные</button>
+    <div class="sticky-header">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="grouped" data-action="tab">По датам</button>
+            <button class="tab-btn" data-tab="random" data-action="tab">Случайные</button>
+        </div>
+
+        <div class="autoplay-controls" id="randomAutoplayControls" style="display: none;">
+            <button class="autoplay-btn" id="autoplayEnglishBtn"
+                    data-action="random-autoplay" data-mode="english">
+                ▶ English Only
+            </button>
+            <button class="autoplay-btn" id="autoplayBothBtn"
+                    data-action="random-autoplay" data-mode="both">
+                ▶ Eng + Rus
+            </button>
+        </div>
     </div>
 
     <div id="content">
@@ -437,7 +461,10 @@
                 btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
             });
 
+            const autoplayControls = document.getElementById('randomAutoplayControls');
+
             if (tab === 'grouped') {
+                autoplayControls.style.display = 'none';
                 if (dateGroups.length > 0) {
                     renderGroups();
                     document.getElementById('wordCount').textContent = totalWords;
@@ -445,6 +472,7 @@
                     loadWords();
                 }
             } else {
+                autoplayControls.style.display = 'flex';
                 loadRandomWords();
             }
         }
@@ -525,19 +553,13 @@
         function renderRandomWords() {
             const content = document.getElementById('content');
 
-            let html = `
-                <div class="autoplay-controls">
-                    <button class="autoplay-btn ${randomAutoplayMode === 'english' ? 'active' : ''}"
-                            data-action="random-autoplay" data-mode="english">
-                        ▶ English Only
-                    </button>
-                    <button class="autoplay-btn ${randomAutoplayMode === 'both' ? 'active' : ''}"
-                            data-action="random-autoplay" data-mode="both">
-                        ▶ Eng + Rus
-                    </button>
-                </div>
-                <div class="word-list">
-            `;
+            // Update sticky autoplay buttons state
+            const englishBtn = document.getElementById('autoplayEnglishBtn');
+            const bothBtn = document.getElementById('autoplayBothBtn');
+            englishBtn.classList.toggle('active', randomAutoplayMode === 'english');
+            bothBtn.classList.toggle('active', randomAutoplayMode === 'both');
+
+            let html = '<div class="word-list">';
 
             randomWords.forEach((word, index) => {
                 html += renderRandomWordCard(word, index);
