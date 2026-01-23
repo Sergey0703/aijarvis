@@ -37,12 +37,193 @@
             margin-bottom: 12px;
         }
 
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
         .header h1 {
             font-size: 20px;
             font-weight: 600;
         }
 
         .word-count {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        /* Burger Menu */
+        .burger-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--tg-theme-secondary-bg-color);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            padding: 8px;
+        }
+
+        .burger-btn span {
+            display: block;
+            width: 18px;
+            height: 2px;
+            background: var(--tg-theme-text-color);
+            border-radius: 1px;
+            transition: all 0.3s;
+        }
+
+        .burger-btn.open span:nth-child(1) {
+            transform: rotate(45deg) translate(4px, 4px);
+        }
+
+        .burger-btn.open span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .burger-btn.open span:nth-child(3) {
+            transform: rotate(-45deg) translate(4px, -4px);
+        }
+
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .menu-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100%;
+            background: var(--tg-theme-bg-color);
+            z-index: 201;
+            transition: left 0.3s;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .side-menu.open {
+            left: 0;
+        }
+
+        .menu-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--tg-theme-secondary-bg-color);
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .menu-item:active {
+            background: var(--tg-theme-secondary-bg-color);
+        }
+
+        .menu-item.active {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+        }
+
+        .menu-item-icon {
+            font-size: 20px;
+        }
+
+        .menu-item-text {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Digest Page Styles */
+        .digest-card {
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .digest-date {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color);
+            margin-bottom: 8px;
+        }
+
+        .digest-text {
+            font-size: 15px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .digest-text b {
+            color: var(--tg-theme-button-color);
+        }
+
+        .digest-audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--tg-theme-bg-color);
+        }
+
+        .digest-play-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .digest-play-btn.playing {
+            background: var(--tg-theme-hint-color);
+        }
+
+        .digest-audio-info {
+            flex: 1;
             font-size: 14px;
             color: var(--tg-theme-hint-color);
         }
@@ -362,48 +543,95 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Words to Review</h1>
-        <span class="word-count" id="wordCount"></span>
-    </div>
+    <!-- Burger Menu Overlay -->
+    <div class="menu-overlay" id="menuOverlay" data-action="close-menu"></div>
 
-    <div class="sticky-header">
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="grouped" data-action="tab">По датам</button>
-            <button class="tab-btn" data-tab="random" data-action="tab">Случайные</button>
+    <!-- Side Menu -->
+    <div class="side-menu" id="sideMenu">
+        <div class="menu-header">AI Jarvis</div>
+        <div class="menu-item active" data-action="navigate" data-page="words">
+            <span class="menu-item-icon">📚</span>
+            <span class="menu-item-text">Vocabulary Review</span>
         </div>
-
-        <div class="autoplay-controls" id="randomAutoplayControls" style="display: none;">
-            <button class="autoplay-btn" id="autoplayEnglishBtn"
-                    data-action="random-autoplay" data-mode="english">
-                ▶ English Only
-            </button>
-            <button class="autoplay-btn" id="autoplayBothBtn"
-                    data-action="random-autoplay" data-mode="both">
-                ▶ Eng + Rus
-            </button>
-        </div>
-
-        <div class="autoplay-controls" id="groupAutoplayControls" style="display: none;">
-            <button class="autoplay-btn" id="groupAutoplayEnglishBtn"
-                    data-action="group-autoplay" data-mode="english">
-                ▶ English Only
-            </button>
-            <button class="autoplay-btn" id="groupAutoplayBothBtn"
-                    data-action="group-autoplay" data-mode="both">
-                ▶ Eng + Rus
-            </button>
+        <div class="menu-item" data-action="navigate" data-page="digest">
+            <span class="menu-item-icon">📰</span>
+            <span class="menu-item-text">AI Digest</span>
         </div>
     </div>
 
-    <div id="content">
-        <div class="loading">Loading words...</div>
+    <!-- Words Page -->
+    <div class="page active" id="wordsPage">
+        <div class="header">
+            <div class="header-left">
+                <button class="burger-btn" id="burgerBtn" data-action="toggle-menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>Words to Review</h1>
+            </div>
+            <span class="word-count" id="wordCount"></span>
+        </div>
+
+        <div class="sticky-header">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="grouped" data-action="tab">По датам</button>
+                <button class="tab-btn" data-tab="random" data-action="tab">Случайные</button>
+            </div>
+
+            <div class="autoplay-controls" id="randomAutoplayControls" style="display: none;">
+                <button class="autoplay-btn" id="autoplayEnglishBtn"
+                        data-action="random-autoplay" data-mode="english">
+                    ▶ English Only
+                </button>
+                <button class="autoplay-btn" id="autoplayBothBtn"
+                        data-action="random-autoplay" data-mode="both">
+                    ▶ Eng + Rus
+                </button>
+            </div>
+
+            <div class="autoplay-controls" id="groupAutoplayControls" style="display: none;">
+                <button class="autoplay-btn" id="groupAutoplayEnglishBtn"
+                        data-action="group-autoplay" data-mode="english">
+                    ▶ English Only
+                </button>
+                <button class="autoplay-btn" id="groupAutoplayBothBtn"
+                        data-action="group-autoplay" data-mode="both">
+                    ▶ Eng + Rus
+                </button>
+            </div>
+        </div>
+
+        <div id="content">
+            <div class="loading">Loading words...</div>
+        </div>
+
+        <button class="refresh-btn" id="refreshBtn" onclick="resetAndLoad()">&#x21bb;</button>
     </div>
 
-    <button class="refresh-btn" id="refreshBtn" onclick="resetAndLoad()">&#x21bb;</button>
+    <!-- Digest Page -->
+    <div class="page" id="digestPage">
+        <div class="header">
+            <div class="header-left">
+                <button class="burger-btn" data-action="toggle-menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>AI Digest</h1>
+            </div>
+        </div>
+
+        <div id="digestContent">
+            <div class="loading">Loading digests...</div>
+        </div>
+
+        <button class="refresh-btn" id="digestRefreshBtn" data-action="refresh-digest">&#x21bb;</button>
+    </div>
 
     <script>
         const API_URL = 'https://n8n.aimediaflow.net/webhook/words-repeat';
+        const DIGEST_API_URL = 'https://n8n.aimediaflow.net/webhook/get-digests';
 
         // State
         let dateGroups = [];
@@ -413,10 +641,16 @@
         let expandedGroup = null; // date string of expanded group
         let activeGroupDate = null; // date of group with active autoplay
         let currentTab = 'grouped'; // 'grouped' or 'random'
+        let currentPage = 'words'; // 'words' or 'digest'
 
         // Random tab autoplay state
         let randomAutoplayMode = null;
         let randomAutoplayIndex = 0;
+
+        // Digest state
+        let digests = [];
+        let digestAudio = null;
+        let currentDigestPlayingBtn = null;
 
         // Initialize Telegram WebApp
         const tg = window.Telegram?.WebApp;
@@ -1159,8 +1393,190 @@
                 const wordIndex = parseInt(target.getAttribute('data-widx'));
                 playRandomAudioSingle(url, wordIndex);
                 return true;
+            } else if (action === 'toggle-menu') {
+                toggleMenu();
+                return true;
+            } else if (action === 'close-menu') {
+                closeMenu();
+                return true;
+            } else if (action === 'navigate') {
+                const page = target.getAttribute('data-page');
+                navigateToPage(page);
+                return true;
+            } else if (action === 'refresh-digest') {
+                loadDigests();
+                return true;
+            } else if (action === 'play-digest') {
+                const url = target.getAttribute('data-url');
+                const index = parseInt(target.getAttribute('data-index'));
+                playDigestAudio(url, index, target);
+                return true;
             }
             return false;
+        }
+
+        // Menu functions
+        function toggleMenu() {
+            const menu = document.getElementById('sideMenu');
+            const overlay = document.getElementById('menuOverlay');
+            const burgerBtns = document.querySelectorAll('.burger-btn');
+
+            menu.classList.toggle('open');
+            overlay.classList.toggle('open');
+            burgerBtns.forEach(btn => btn.classList.toggle('open'));
+        }
+
+        function closeMenu() {
+            const menu = document.getElementById('sideMenu');
+            const overlay = document.getElementById('menuOverlay');
+            const burgerBtns = document.querySelectorAll('.burger-btn');
+
+            menu.classList.remove('open');
+            overlay.classList.remove('open');
+            burgerBtns.forEach(btn => btn.classList.remove('open'));
+        }
+
+        function navigateToPage(page) {
+            if (currentPage === page) {
+                closeMenu();
+                return;
+            }
+
+            // Stop any playing audio
+            stopAutoplay();
+            stopRandomAutoplay();
+            stopDigestAudio();
+
+            // Update menu items
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.toggle('active', item.getAttribute('data-page') === page);
+            });
+
+            // Switch pages
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
+            if (page === 'words') {
+                document.getElementById('wordsPage').classList.add('active');
+            } else if (page === 'digest') {
+                document.getElementById('digestPage').classList.add('active');
+                if (digests.length === 0) {
+                    loadDigests();
+                }
+            }
+
+            currentPage = page;
+            closeMenu();
+        }
+
+        // Digest functions
+        async function loadDigests() {
+            const content = document.getElementById('digestContent');
+            const refreshBtn = document.getElementById('digestRefreshBtn');
+
+            refreshBtn.classList.add('spinning');
+            content.innerHTML = '<div class="loading">Loading digests...</div>';
+
+            try {
+                const response = await fetch(DIGEST_API_URL);
+                if (!response.ok) throw new Error('Failed to fetch');
+
+                const data = await response.json();
+                digests = data.digests || [];
+
+                if (digests.length === 0) {
+                    content.innerHTML = '<div class="loading">No digests available</div>';
+                    return;
+                }
+
+                renderDigests();
+
+            } catch (error) {
+                console.error('Error:', error);
+                content.innerHTML = '<div class="error">Failed to load digests.<br>Please try again.</div>';
+            } finally {
+                refreshBtn.classList.remove('spinning');
+            }
+        }
+
+        function renderDigests() {
+            const content = document.getElementById('digestContent');
+
+            let html = '';
+            digests.forEach((digest, index) => {
+                const date = new Date(digest.createdAt);
+                const formattedDate = date.toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'long',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                html += `
+                    <div class="digest-card">
+                        <div class="digest-date">${formattedDate}</div>
+                        <div class="digest-text">${digest.text}</div>
+                        ${digest.audioUrl ? `
+                            <div class="digest-audio-controls">
+                                <button class="digest-play-btn" id="digest-play-${index}"
+                                        data-action="play-digest" data-url="${escapeHtml(digest.audioUrl)}" data-index="${index}">
+                                    ▶
+                                </button>
+                                <div class="digest-audio-info">Listen to audio</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            content.innerHTML = html;
+        }
+
+        function playDigestAudio(url, index, btn) {
+            if (!url) return;
+
+            // If same audio is playing, stop it
+            if (digestAudio && currentDigestPlayingBtn === btn) {
+                stopDigestAudio();
+                return;
+            }
+
+            // Stop any playing audio
+            stopDigestAudio();
+
+            if (tg?.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+
+            currentDigestPlayingBtn = btn;
+            btn.classList.add('playing');
+            btn.innerHTML = '⏸';
+
+            digestAudio = new Audio(url);
+            digestAudio.volume = 1.0;
+
+            digestAudio.onended = () => {
+                stopDigestAudio();
+            };
+
+            digestAudio.onerror = () => {
+                stopDigestAudio();
+            };
+
+            digestAudio.play().catch(() => {
+                stopDigestAudio();
+            });
+        }
+
+        function stopDigestAudio() {
+            if (digestAudio) {
+                digestAudio.pause();
+                digestAudio = null;
+            }
+            if (currentDigestPlayingBtn) {
+                currentDigestPlayingBtn.classList.remove('playing');
+                currentDigestPlayingBtn.innerHTML = '▶';
+                currentDigestPlayingBtn = null;
+            }
         }
 
         // Find closest element with data-action

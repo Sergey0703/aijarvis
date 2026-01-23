@@ -2,231 +2,107 @@
   "name": "API - Get Today's Digests",
   "nodes": [
     {
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
       "parameters": {
-        "path": "news/today",
-        "responseMode": "lastNode",
+        "path": "get-digests",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
         "options": {}
       },
-      "id": "661f647f-e039-4769-89da-86aae98892db",
-      "name": "Webhook GET",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [
-        0,
-        0
-      ],
-      "webhookId": "0cad0ab0-c35d-43a4-8c60-e2c50544fa7c"
+      "webhookId": "digest-api-webhook"
     },
     {
+      "id": "datatable-1",
+      "name": "Get Digests",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [470, 300],
       "parameters": {
         "operation": "get",
         "dataTableId": {
           "__rl": true,
           "value": "JnVde1xTjaVHMlMx",
-          "mode": "list",
-          "cachedResultName": "DailyDigests",
-          "cachedResultUrl": "/projects/jNVg0G6i9vrm7uSd/datatables/JnVde1xTjaVHMlMx"
+          "mode": "id"
         },
-        "matchType": "allConditions",
-        "filters": {
-          "conditions": [
+        "limit": 5,
+        "sort": {
+          "sortRules": [
             {
               "keyName": "createdAt",
-              "condition": "gte",
-              "keyValue": "={{ $today }}"
+              "order": "desc"
             }
           ]
         }
-      },
-      "id": "01d47436-6b21-4d09-a0f6-bd7c889c98cc",
-      "name": "Get News Table",
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1,
-      "position": [
-        224,
-        0
-      ]
+      }
     },
     {
+      "id": "code-1",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 300],
       "parameters": {
-        "operation": "update",
-        "dataTableId": {
-          "__rl": true,
-          "value": "JnVde1xTjaVHMlMx",
-          "mode": "list",
-          "cachedResultName": "DailyDigests",
-          "cachedResultUrl": "/projects/jNVg0G6i9vrm7uSd/datatables/JnVde1xTjaVHMlMx"
-        },
-        "filters": {
-          "conditions": [
-            {
-              "keyValue": "={{ $json.id }}"
-            }
-          ]
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "deliveredAt": "={{ $now }}"
-          },
-          "matchingColumns": [],
-          "schema": [
-            {
-              "id": "publishedDate",
-              "displayName": "publishedDate",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "dateTime",
-              "readOnly": false,
-              "removed": true
-            },
-            {
-              "id": "title",
-              "displayName": "title",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": true
-            },
-            {
-              "id": "text",
-              "displayName": "text",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": true
-            },
-            {
-              "id": "url",
-              "displayName": "url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": true
-            },
-            {
-              "id": "category",
-              "displayName": "category",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": true
-            },
-            {
-              "id": "isDelivered",
-              "displayName": "isDelivered",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "boolean",
-              "readOnly": false,
-              "removed": true
-            },
-            {
-              "id": "deliveredAt",
-              "displayName": "deliveredAt",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "dateTime",
-              "readOnly": false,
-              "removed": false
-            }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1.1,
-      "position": [
-        1104,
-        0
-      ],
-      "id": "5f9532c4-642b-41b6-8902-53354ffbcd8a",
-      "name": "Update row(s)"
+        "jsCode": "const digests = items.map(item => ({\n  id: item.json.id,\n  text: item.json.text || '',\n  createdAt: item.json.createdAt\n}));\n\nreturn [{ json: { digests } }];"
+      }
     },
     {
-      "parameters": {
-        "respondWith": "allIncomingItems",
-        "options": {}
-      },
+      "id": "respond-1",
+      "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.5,
-      "position": [
-        1552,
-        0
-      ],
-      "id": "36e139cb-4ee3-45ed-89d6-5d678cd13b0d",
-      "name": "Respond to Webhook"
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.limit",
-      "typeVersion": 1,
-      "position": [
-        752,
-        0
-      ],
-      "id": "b3596a89-dde0-4c09-b1f5-ad6193b2f264",
-      "name": "Limit"
-    },
-    {
+      "typeVersion": 1.1,
+      "position": [910, 300],
       "parameters": {
-        "sortFieldsUi": {
-          "sortField": [
-            {
-              "fieldName": "deliveredAt"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.sort",
-      "typeVersion": 1,
-      "position": [
-        480,
-        0
-      ],
-      "id": "656df0a3-5a6d-48a2-9cf1-c9cfeb1540aa",
-      "name": "Sort"
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      }
     }
   ],
-  "pinData": {},
   "connections": {
-    "Webhook GET": {
+    "Webhook": {
       "main": [
         [
           {
-            "node": "Get News Table",
+            "node": "Get Digests",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get News Table": {
+    "Get Digests": {
       "main": [
         [
           {
-            "node": "Sort",
+            "node": "Format Response",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update row(s)": {
+    "Format Response": {
       "main": [
         [
           {
@@ -236,39 +112,12 @@
           }
         ]
       ]
-    },
-    "Limit": {
-      "main": [
-        [
-          {
-            "node": "Update row(s)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sort": {
-      "main": [
-        [
-          {
-            "node": "Limit",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
-    "executionOrder": "v1",
-    "availableInMCP": false
+    "executionOrder": "v1"
   },
-  "versionId": "3b2f1daa-3efe-4b2f-b000-5903d5aee635",
-  "meta": {
-    "instanceId": "6cb256a7bbd0f6147fbf058931ef9d6e6b74163148390272817b18c9ab14a365"
-  },
-  "id": "1ZHWSpDLJA3MMrIP",
+  "id": "2EKNwlPxAZoJQnrQ",
   "tags": []
 }
