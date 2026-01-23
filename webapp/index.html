@@ -317,9 +317,7 @@
         }
 
         .group-autoplay-controls {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 12px;
+            display: none; /* Hidden - using sticky header instead */
         }
 
         .group-autoplay-btn {
@@ -385,6 +383,17 @@
                 ▶ Eng + Rus
             </button>
         </div>
+
+        <div class="autoplay-controls" id="groupAutoplayControls" style="display: none;">
+            <button class="autoplay-btn" id="groupAutoplayEnglishBtn"
+                    data-action="group-autoplay" data-mode="english">
+                ▶ English Only
+            </button>
+            <button class="autoplay-btn" id="groupAutoplayBothBtn"
+                    data-action="group-autoplay" data-mode="both">
+                ▶ Eng + Rus
+            </button>
+        </div>
     </div>
 
     <div id="content">
@@ -443,6 +452,7 @@
             expandedGroup = null;
             stopAutoplay();
             stopRandomAutoplay();
+            document.getElementById('groupAutoplayControls').style.display = 'none';
             if (currentTab === 'random') {
                 loadRandomWords();
             } else {
@@ -456,15 +466,18 @@
             stopAutoplay();
             stopRandomAutoplay();
             currentTab = tab;
+            expandedGroup = null;
 
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
             });
 
-            const autoplayControls = document.getElementById('randomAutoplayControls');
+            const randomControls = document.getElementById('randomAutoplayControls');
+            const groupControls = document.getElementById('groupAutoplayControls');
 
             if (tab === 'grouped') {
-                autoplayControls.style.display = 'none';
+                randomControls.style.display = 'none';
+                groupControls.style.display = 'none';
                 if (dateGroups.length > 0) {
                     renderGroups();
                     document.getElementById('wordCount').textContent = totalWords;
@@ -472,7 +485,8 @@
                     loadWords();
                 }
             } else {
-                autoplayControls.style.display = 'flex';
+                randomControls.style.display = 'flex';
+                groupControls.style.display = 'none';
                 loadRandomWords();
             }
         }
@@ -640,32 +654,32 @@
         }
 
         function toggleGroup(date) {
+            const groupControls = document.getElementById('groupAutoplayControls');
+
             if (expandedGroup === date) {
                 expandedGroup = null;
                 stopAutoplay();
+                groupControls.style.display = 'none';
             } else {
                 stopAutoplay();
                 expandedGroup = date;
+                groupControls.style.display = 'flex';
+                updateGroupAutoplayButtons();
             }
             renderGroups();
         }
 
-        function renderGroupContent(group, groupIndex) {
-            const isActiveGroup = activeGroupDate === group.date;
+        function updateGroupAutoplayButtons() {
+            const englishBtn = document.getElementById('groupAutoplayEnglishBtn');
+            const bothBtn = document.getElementById('groupAutoplayBothBtn');
+            const isActiveGroup = activeGroupDate === expandedGroup;
 
-            let html = `
-                <div class="group-autoplay-controls">
-                    <button class="group-autoplay-btn ${isActiveGroup && autoplayMode === 'english' ? 'active' : ''}"
-                            data-action="autoplay" data-gidx="${groupIndex}" data-mode="english">
-                        ▶ English Only
-                    </button>
-                    <button class="group-autoplay-btn ${isActiveGroup && autoplayMode === 'both' ? 'active' : ''}"
-                            data-action="autoplay" data-gidx="${groupIndex}" data-mode="both">
-                        ▶ Eng + Rus
-                    </button>
-                </div>
-                <div class="group-word-list">
-            `;
+            englishBtn.classList.toggle('active', isActiveGroup && autoplayMode === 'english');
+            bothBtn.classList.toggle('active', isActiveGroup && autoplayMode === 'both');
+        }
+
+        function renderGroupContent(group, groupIndex) {
+            let html = '<div class="group-word-list">';
 
             group.words.forEach((word, index) => {
                 html += renderWordCard(word, groupIndex, index);
@@ -1132,6 +1146,13 @@
             } else if (action === 'random-autoplay') {
                 const mode = target.getAttribute('data-mode');
                 toggleRandomAutoplay(mode);
+                return true;
+            } else if (action === 'group-autoplay') {
+                const mode = target.getAttribute('data-mode');
+                if (expandedGroup) {
+                    toggleGroupAutoplay(expandedGroup, mode);
+                    updateGroupAutoplayButtons();
+                }
                 return true;
             } else if (action === 'play-random') {
                 const url = target.getAttribute('data-url');
