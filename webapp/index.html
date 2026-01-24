@@ -204,37 +204,80 @@
             color: var(--tg-theme-button-color);
         }
 
-        .digest-audio-controls {
+        /* Audio Mini Player */
+        .audio-player {
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid var(--tg-theme-bg-color);
+            margin-top: 16px;
+            padding: 12px;
+            background: var(--tg-theme-bg-color);
+            border-radius: 12px;
         }
 
-        .digest-play-btn {
+        .player-btn {
             width: 44px;
             height: 44px;
+            min-width: 44px;
             border-radius: 50%;
             background: var(--tg-theme-button-color);
             color: var(--tg-theme-button-text-color);
             border: none;
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background 0.2s;
         }
 
-        .digest-play-btn.playing {
+        .player-btn:active {
+            transform: scale(0.95);
+        }
+
+        .player-btn.playing {
+            background: #e74c3c;
+        }
+
+        .player-btn.loading {
             background: var(--tg-theme-hint-color);
         }
 
-        .digest-audio-info {
+        .player-progress-container {
             flex: 1;
-            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .player-progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 3px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .player-progress-fill {
+            height: 100%;
+            background: var(--tg-theme-button-color);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .player-time {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
             color: var(--tg-theme-hint-color);
+        }
+
+        .player-status {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+            text-align: center;
         }
 
         /* Sticky header with tabs and autoplay controls */
@@ -1415,10 +1458,11 @@
             } else if (action === 'refresh-digest') {
                 loadDigests();
                 return true;
-            } else if (action === 'play-digest') {
-                const url = target.getAttribute('data-url');
-                const index = parseInt(target.getAttribute('data-index'));
-                playDigestAudio(url, index, target);
+            } else if (action === 'player-toggle') {
+                toggleDigestPlayer();
+                return true;
+            } else if (action === 'player-seek') {
+                seekDigestAudio(event);
                 return true;
             }
             return false;
@@ -1529,6 +1573,20 @@
                     <div class="digest-date">${formattedDate}</div>
                     <div class="digest-section-title">🇬🇧 English</div>
                     <div class="digest-text">${digest.text}</div>
+                    <div class="audio-player" id="digestPlayer">
+                        <button class="player-btn" id="playerBtn" data-action="player-toggle">
+                            ▶
+                        </button>
+                        <div class="player-progress-container">
+                            <div class="player-progress-bar" id="playerProgressBar" data-action="player-seek">
+                                <div class="player-progress-fill" id="playerProgressFill"></div>
+                            </div>
+                            <div class="player-time">
+                                <span id="playerCurrentTime">0:00</span>
+                                <span id="playerDuration">0:00</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="digest-card">
                     <div class="digest-section-title">🇷🇺 Русский</div>
@@ -1539,52 +1597,151 @@
             content.innerHTML = html;
         }
 
-        function playDigestAudio(url, index, btn) {
-            if (!url) return;
+        // Audio Player functions
+        let playerUpdateInterval = null;
 
-            // If same audio is playing, stop it
-            if (digestAudio && currentDigestPlayingBtn === btn) {
-                stopDigestAudio();
+        function formatTime(seconds) {
+            if (isNaN(seconds) || !isFinite(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updatePlayerUI() {
+            if (!digestAudio) return;
+
+            const progressFill = document.getElementById('playerProgressFill');
+            const currentTimeEl = document.getElementById('playerCurrentTime');
+            const durationEl = document.getElementById('playerDuration');
+
+            if (progressFill && digestAudio.duration) {
+                const progress = (digestAudio.currentTime / digestAudio.duration) * 100;
+                progressFill.style.width = `${progress}%`;
+            }
+
+            if (currentTimeEl) {
+                currentTimeEl.textContent = formatTime(digestAudio.currentTime);
+            }
+
+            if (durationEl && digestAudio.duration) {
+                durationEl.textContent = formatTime(digestAudio.duration);
+            }
+        }
+
+        function toggleDigestPlayer() {
+            const btn = document.getElementById('playerBtn');
+            if (!btn) return;
+
+            if (!currentDigest || !currentDigest.audioUrl) {
+                // No audio URL - show message
+                btn.textContent = '!';
+                setTimeout(() => { btn.textContent = '▶'; }, 1000);
                 return;
             }
 
-            // Stop any playing audio
-            stopDigestAudio();
+            if (digestAudio && !digestAudio.paused) {
+                // Pause
+                digestAudio.pause();
+                btn.textContent = '▶';
+                btn.classList.remove('playing');
+                if (playerUpdateInterval) {
+                    clearInterval(playerUpdateInterval);
+                    playerUpdateInterval = null;
+                }
+            } else if (digestAudio) {
+                // Resume
+                digestAudio.play();
+                btn.textContent = '⏸';
+                btn.classList.add('playing');
+                playerUpdateInterval = setInterval(updatePlayerUI, 100);
+            } else {
+                // Start new
+                startDigestAudio();
+            }
 
             if (tg?.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('light');
             }
+        }
 
-            currentDigestPlayingBtn = btn;
-            btn.classList.add('playing');
-            btn.innerHTML = '⏸';
+        function startDigestAudio() {
+            const btn = document.getElementById('playerBtn');
+            if (!btn || !currentDigest?.audioUrl) return;
 
-            digestAudio = new Audio(url);
+            btn.classList.add('loading');
+            btn.textContent = '...';
+
+            digestAudio = new Audio(currentDigest.audioUrl);
             digestAudio.volume = 1.0;
 
+            digestAudio.onloadedmetadata = () => {
+                updatePlayerUI();
+            };
+
+            digestAudio.oncanplay = () => {
+                btn.classList.remove('loading');
+                btn.classList.add('playing');
+                btn.textContent = '⏸';
+                digestAudio.play();
+                playerUpdateInterval = setInterval(updatePlayerUI, 100);
+            };
+
             digestAudio.onended = () => {
-                stopDigestAudio();
+                resetPlayer();
             };
 
             digestAudio.onerror = () => {
-                stopDigestAudio();
+                btn.classList.remove('loading');
+                btn.textContent = '!';
+                setTimeout(() => { btn.textContent = '▶'; }, 2000);
+                digestAudio = null;
             };
-
-            digestAudio.play().catch(() => {
-                stopDigestAudio();
-            });
         }
 
-        function stopDigestAudio() {
+        function seekDigestAudio(e) {
+            if (!digestAudio || !digestAudio.duration) return;
+
+            const progressBar = document.getElementById('playerProgressBar');
+            if (!progressBar) return;
+
+            const rect = progressBar.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const percent = clickX / rect.width;
+            digestAudio.currentTime = percent * digestAudio.duration;
+            updatePlayerUI();
+        }
+
+        function resetPlayer() {
+            const btn = document.getElementById('playerBtn');
+            const progressFill = document.getElementById('playerProgressFill');
+            const currentTimeEl = document.getElementById('playerCurrentTime');
+
+            if (playerUpdateInterval) {
+                clearInterval(playerUpdateInterval);
+                playerUpdateInterval = null;
+            }
+
             if (digestAudio) {
                 digestAudio.pause();
                 digestAudio = null;
             }
-            if (currentDigestPlayingBtn) {
-                currentDigestPlayingBtn.classList.remove('playing');
-                currentDigestPlayingBtn.innerHTML = '▶';
-                currentDigestPlayingBtn = null;
+
+            if (btn) {
+                btn.classList.remove('playing', 'loading');
+                btn.textContent = '▶';
             }
+
+            if (progressFill) {
+                progressFill.style.width = '0%';
+            }
+
+            if (currentTimeEl) {
+                currentTimeEl.textContent = '0:00';
+            }
+        }
+
+        function stopDigestAudio() {
+            resetPlayer();
         }
 
         // Find closest element with data-action
