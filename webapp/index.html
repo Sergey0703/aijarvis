@@ -609,6 +609,10 @@
             <span class="menu-item-icon">📰</span>
             <span class="menu-item-text">AI Digest</span>
         </div>
+        <div class="menu-item" data-action="navigate" data-page="dictionary">
+            <span class="menu-item-icon">📖</span>
+            <span class="menu-item-text">Dictionary</span>
+        </div>
     </div>
 
     <!-- Words Page -->
@@ -681,9 +685,44 @@
         <button class="refresh-btn" id="digestRefreshBtn" data-action="refresh-digest">&#x21bb;</button>
     </div>
 
+    <!-- Dictionary Page -->
+    <div class="page" id="dictionaryPage">
+        <div class="header">
+            <div class="header-left">
+                <button class="burger-btn" data-action="toggle-menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>Dictionary</h1>
+            </div>
+            <span class="word-count" id="dictWordCount"></span>
+        </div>
+
+        <div class="sticky-header">
+            <div class="autoplay-controls" id="dictAutoplayControls">
+                <button class="autoplay-btn" id="dictAutoplayEnglishBtn"
+                        data-action="dict-autoplay" data-mode="english">
+                    ▶ English Only
+                </button>
+                <button class="autoplay-btn" id="dictAutoplayBothBtn"
+                        data-action="dict-autoplay" data-mode="both">
+                    ▶ Eng + Rus
+                </button>
+            </div>
+        </div>
+
+        <div id="dictionaryContent">
+            <div class="loading">Loading dictionary...</div>
+        </div>
+
+        <button class="refresh-btn" id="dictRefreshBtn" data-action="refresh-dictionary">&#x21bb;</button>
+    </div>
+
     <script>
         const API_URL = 'https://n8n.aimediaflow.net/webhook/words-repeat';
         const DIGEST_API_URL = 'https://n8n.aimediaflow.net/webhook/get-digests';
+        const DICTIONARY_API_URL = 'https://n8n.aimediaflow.net/webhook/words-all';
 
         // State
         let dateGroups = [];
@@ -703,6 +742,11 @@
         let currentDigest = null;
         let digestAudio = null;
         let currentDigestPlayingBtn = null;
+
+        // Dictionary state
+        let dictionaryWords = [];
+        let dictAutoplayMode = null;
+        let dictAutoplayIndex = 0;
 
         // Initialize Telegram WebApp
         const tg = window.Telegram?.WebApp;
@@ -1464,6 +1508,18 @@
             } else if (action === 'player-seek') {
                 seekDigestAudio(event);
                 return true;
+            } else if (action === 'refresh-dictionary') {
+                loadDictionary();
+                return true;
+            } else if (action === 'dict-autoplay') {
+                const mode = target.getAttribute('data-mode');
+                toggleDictAutoplay(mode);
+                return true;
+            } else if (action === 'play-dict') {
+                const url = target.getAttribute('data-url');
+                const wordIndex = parseInt(target.getAttribute('data-widx'));
+                playDictAudioSingle(url, wordIndex);
+                return true;
             }
             return false;
         }
@@ -1499,6 +1555,7 @@
             stopAutoplay();
             stopRandomAutoplay();
             stopDigestAudio();
+            stopDictAutoplay();
 
             // Update menu items
             document.querySelectorAll('.menu-item').forEach(item => {
@@ -1514,6 +1571,11 @@
                 document.getElementById('digestPage').classList.add('active');
                 if (!currentDigest) {
                     loadDigests();
+                }
+            } else if (page === 'dictionary') {
+                document.getElementById('dictionaryPage').classList.add('active');
+                if (dictionaryWords.length === 0) {
+                    loadDictionary();
                 }
             }
 
@@ -1742,6 +1804,227 @@
 
         function stopDigestAudio() {
             resetPlayer();
+        }
+
+        // Dictionary functions
+        async function loadDictionary() {
+            const content = document.getElementById('dictionaryContent');
+            const refreshBtn = document.getElementById('dictRefreshBtn');
+            const wordCount = document.getElementById('dictWordCount');
+
+            refreshBtn.classList.add('spinning');
+            content.innerHTML = '<div class="loading">Loading dictionary...</div>';
+
+            try {
+                const response = await fetch(DICTIONARY_API_URL);
+                if (!response.ok) throw new Error('Failed to fetch');
+
+                const data = await response.json();
+                dictionaryWords = data.words || [];
+
+                wordCount.textContent = dictionaryWords.length;
+
+                if (dictionaryWords.length === 0) {
+                    content.innerHTML = '<div class="loading">No words in dictionary</div>';
+                    return;
+                }
+
+                renderDictionary();
+
+            } catch (error) {
+                console.error('Error:', error);
+                content.innerHTML = '<div class="error">Failed to load dictionary.<br>Please try again.</div>';
+            } finally {
+                refreshBtn.classList.remove('spinning');
+            }
+        }
+
+        function renderDictionary() {
+            const content = document.getElementById('dictionaryContent');
+
+            // Update autoplay buttons state
+            const englishBtn = document.getElementById('dictAutoplayEnglishBtn');
+            const bothBtn = document.getElementById('dictAutoplayBothBtn');
+            englishBtn.classList.toggle('active', dictAutoplayMode === 'english');
+            bothBtn.classList.toggle('active', dictAutoplayMode === 'both');
+
+            let html = '<div class="word-list">';
+
+            dictionaryWords.forEach((word, index) => {
+                html += renderDictWordCard(word, index);
+            });
+
+            html += '</div>';
+            content.innerHTML = html;
+        }
+
+        function renderDictWordCard(word, index) {
+            const transcript = word.transcript && word.transcript !== 'None' ? `/${word.transcript}/` : '';
+            const audioUrl = word.audio || '';
+            const isHighlighted = dictAutoplayMode && dictAutoplayIndex === index;
+
+            return `
+                <div class="word-card ${isHighlighted ? 'highlighted' : ''}" data-index="${index}">
+                    <div class="word-header">
+                        <span class="word-text">${escapeHtml(word.word)}</span>
+                        <button class="audio-btn" id="dict-audio-btn-${index}"
+                                data-action="play-dict" data-url="${escapeHtml(audioUrl)}" data-widx="${index}">
+                            &#x1F50A;
+                        </button>
+                    </div>
+                    ${transcript ? `<div class="transcript">${escapeHtml(transcript)}</div>` : ''}
+                    <div class="translate">${escapeHtml(word.translate)}</div>
+                </div>
+            `;
+        }
+
+        function playDictAudioSingle(url, wordIndex) {
+            if (!url) return;
+
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+                if (currentPlayingBtn) {
+                    currentPlayingBtn.classList.remove('playing');
+                }
+            }
+
+            if (tg?.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+
+            const btn = document.getElementById(`dict-audio-btn-${wordIndex}`);
+            currentPlayingBtn = btn;
+            if (btn) btn.classList.add('playing');
+
+            currentAudio = new Audio(url);
+            currentAudio.volume = 1.0;
+
+            currentAudio.onended = () => {
+                if (btn) btn.classList.remove('playing');
+                currentPlayingBtn = null;
+            };
+
+            currentAudio.onerror = () => {
+                if (btn) btn.classList.remove('playing');
+                currentPlayingBtn = null;
+            };
+
+            currentAudio.play().catch(() => {
+                if (btn) btn.classList.remove('playing');
+                currentPlayingBtn = null;
+            });
+        }
+
+        async function toggleDictAutoplay(mode) {
+            if (dictAutoplayMode === mode) {
+                stopDictAutoplay();
+            } else {
+                await unlockAudio();
+                stopDictAutoplay();
+                dictAutoplayMode = mode;
+                dictAutoplayIndex = 0;
+                renderDictionary();
+                playNextDictWord();
+            }
+        }
+
+        function stopDictAutoplay() {
+            dictAutoplayMode = null;
+            if (autoplayTimeout) {
+                clearTimeout(autoplayTimeout);
+                autoplayTimeout = null;
+            }
+            sharedAudio.pause();
+            sharedAudio.onended = null;
+            sharedAudio.onerror = null;
+
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            if (window.speechSynthesis && window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
+            document.querySelectorAll('#dictionaryContent .word-card.highlighted').forEach(el => {
+                el.classList.remove('highlighted');
+            });
+            // Update buttons
+            const englishBtn = document.getElementById('dictAutoplayEnglishBtn');
+            const bothBtn = document.getElementById('dictAutoplayBothBtn');
+            if (englishBtn) englishBtn.classList.remove('active');
+            if (bothBtn) bothBtn.classList.remove('active');
+        }
+
+        function highlightDictWord(index) {
+            document.querySelectorAll('#dictionaryContent .word-card.highlighted').forEach(el => {
+                el.classList.remove('highlighted');
+            });
+            const cards = document.querySelectorAll('#dictionaryContent .word-card');
+            if (cards[index]) {
+                cards[index].classList.add('highlighted');
+                cards[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function playNextDictWord() {
+            if (!dictAutoplayMode || dictionaryWords.length === 0) {
+                stopDictAutoplay();
+                return;
+            }
+
+            if (dictAutoplayIndex >= dictionaryWords.length) {
+                dictAutoplayIndex = 0;
+            }
+
+            const word = dictionaryWords[dictAutoplayIndex];
+            highlightDictWord(dictAutoplayIndex);
+
+            if (dictAutoplayMode === 'english') {
+                playDictWordAudio(word.audio, () => {
+                    autoplayTimeout = setTimeout(() => {
+                        dictAutoplayIndex++;
+                        playNextDictWord();
+                    }, 1000);
+                });
+            } else if (dictAutoplayMode === 'both') {
+                playDictWordAudio(word.audio, () => {
+                    autoplayTimeout = setTimeout(() => {
+                        speakRussian(word.translate, () => {
+                            autoplayTimeout = setTimeout(() => {
+                                dictAutoplayIndex++;
+                                playNextDictWord();
+                            }, 2000);
+                        });
+                    }, 1000);
+                });
+            }
+        }
+
+        function playDictWordAudio(url, onComplete) {
+            if (!url || !dictAutoplayMode) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            sharedAudio.pause();
+            sharedAudio.onended = null;
+            sharedAudio.onerror = null;
+
+            sharedAudio.src = url;
+            sharedAudio.currentTime = 0;
+
+            sharedAudio.onended = () => {
+                if (onComplete) onComplete();
+            };
+
+            sharedAudio.onerror = () => {
+                if (onComplete) onComplete();
+            };
+
+            sharedAudio.play().catch(() => {
+                if (onComplete) onComplete();
+            });
         }
 
         // Find closest element with data-action
