@@ -17,7 +17,7 @@
     },
     {
       "id": "datatable-1",
-      "name": "Get Digests",
+      "name": "Get Latest Digest",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [470, 300],
@@ -28,7 +28,7 @@
           "value": "JnVde1xTjaVHMlMx",
           "mode": "id"
         },
-        "limit": 5,
+        "limit": 1,
         "sort": {
           "sortRules": [
             {
@@ -40,13 +40,13 @@
       }
     },
     {
-      "id": "code-1",
+      "id": "code-format",
       "name": "Format Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [690, 300],
       "parameters": {
-        "jsCode": "const digests = items.map(item => ({\n  id: item.json.id,\n  text: item.json.text || '',\n  createdAt: item.json.createdAt\n}));\n\nreturn [{ json: { digests } }];"
+        "jsCode": "const digest = items[0].json;\n\nreturn [{ json: {\n  digest: {\n    id: digest.id,\n    text: digest.text || '',\n    russianText: digest.translation || '',\n    createdAt: digest.createdAt\n  }\n}}];"
       }
     },
     {
@@ -84,14 +84,14 @@
       "main": [
         [
           {
-            "node": "Get Digests",
+            "node": "Get Latest Digest",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get Digests": {
+    "Get Latest Digest": {
       "main": [
         [
           {
@@ -114,7 +114,7 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1"
   },

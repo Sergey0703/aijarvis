@@ -119,6 +119,39 @@ aijarvis/
 └── .gitignore       # Git ignore
 ```
 
+## Деплой Telegram Mini App (Vocabulary Review)
+
+### Сервер Hetzner
+- **IP**: 46.62.246.93
+- **SSH ключ**: `.ssh_hetzner_key` (в корне проекта)
+
+### Контейнеры на сервере
+```
+n8n-caddy-1          - Caddy web server (обслуживает vocab.aimediaflow.net)
+n8n-n8n-1            - n8n workflow automation
+n8n-postgres-1       - PostgreSQL для n8n
+kokoro-tts           - TTS сервис
+english-tutor-agent  - Voice agent
+```
+
+### Путь к файлам Mini App
+- **На хосте**: `/opt/n8n/webapp/`
+- **В контейнере caddy**: `/srv/webapp/` (read-only mount)
+- **URL**: https://vocab.aimediaflow.net
+
+### Команда деплоя webapp
+```bash
+scp -i "c:/projects/aijarvis/.ssh_hetzner_key" "c:/projects/aijarvis/webapp/index.html" root@46.62.246.93:/opt/n8n/webapp/index.html
+```
+
+### n8n Workflows
+- **API - Get Today's Digests** (ID: 2EKNwlPxAZoJQnrQ) - webhook: `https://n8n.aimediaflow.net/webhook/get-digests`
+- **Smart Funnel: AI Digest Generator** (ID: KLtGtt6CkqkMln91) - генерация дайджестов
+
+### DataTables (n8n)
+- **DailyDigests** (ID: JnVde1xTjaVHMlMx) - хранение дайджестов
+- **News** (ID: MWNgETzBSi4cAIFo) - новости для дайджестов
+
 ## Troubleshooting
 
 ### Agent не стартует

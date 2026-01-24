@@ -185,6 +185,15 @@
             margin-bottom: 8px;
         }
 
+        .digest-section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         .digest-text {
             font-size: 15px;
             line-height: 1.6;
@@ -648,7 +657,7 @@
         let randomAutoplayIndex = 0;
 
         // Digest state
-        let digests = [];
+        let currentDigest = null;
         let digestAudio = null;
         let currentDigestPlayingBtn = null;
 
@@ -1459,7 +1468,7 @@
                 document.getElementById('wordsPage').classList.add('active');
             } else if (page === 'digest') {
                 document.getElementById('digestPage').classList.add('active');
-                if (digests.length === 0) {
+                if (!currentDigest) {
                     loadDigests();
                 }
             }
@@ -1474,59 +1483,58 @@
             const refreshBtn = document.getElementById('digestRefreshBtn');
 
             refreshBtn.classList.add('spinning');
-            content.innerHTML = '<div class="loading">Loading digests...</div>';
+            content.innerHTML = '<div class="loading">Loading digest...</div>';
 
             try {
                 const response = await fetch(DIGEST_API_URL);
                 if (!response.ok) throw new Error('Failed to fetch');
 
                 const data = await response.json();
-                digests = data.digests || [];
+                currentDigest = data.digest || null;
 
-                if (digests.length === 0) {
-                    content.innerHTML = '<div class="loading">No digests available</div>';
+                if (!currentDigest) {
+                    content.innerHTML = '<div class="loading">No digest available</div>';
                     return;
                 }
 
-                renderDigests();
+                renderDigest();
 
             } catch (error) {
                 console.error('Error:', error);
-                content.innerHTML = '<div class="error">Failed to load digests.<br>Please try again.</div>';
+                content.innerHTML = '<div class="error">Failed to load digest.<br>Please try again.</div>';
             } finally {
                 refreshBtn.classList.remove('spinning');
             }
         }
 
-        function renderDigests() {
+        function renderDigest() {
             const content = document.getElementById('digestContent');
+            const digest = currentDigest;
 
-            let html = '';
-            digests.forEach((digest, index) => {
-                const date = new Date(digest.createdAt);
-                const formattedDate = date.toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
+            if (!digest) {
+                content.innerHTML = '<div class="loading">No digest available</div>';
+                return;
+            }
 
-                html += `
-                    <div class="digest-card">
-                        <div class="digest-date">${formattedDate}</div>
-                        <div class="digest-text">${digest.text}</div>
-                        ${digest.audioUrl ? `
-                            <div class="digest-audio-controls">
-                                <button class="digest-play-btn" id="digest-play-${index}"
-                                        data-action="play-digest" data-url="${escapeHtml(digest.audioUrl)}" data-index="${index}">
-                                    ▶
-                                </button>
-                                <div class="digest-audio-info">Listen to audio</div>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
+            const date = new Date(digest.createdAt);
+            const formattedDate = date.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'long',
+                hour: '2-digit',
+                minute: '2-digit'
             });
+
+            let html = `
+                <div class="digest-card">
+                    <div class="digest-date">${formattedDate}</div>
+                    <div class="digest-section-title">🇬🇧 English</div>
+                    <div class="digest-text">${digest.text}</div>
+                </div>
+                <div class="digest-card">
+                    <div class="digest-section-title">🇷🇺 Русский</div>
+                    <div class="digest-text">${digest.russianText || 'Перевод недоступен'}</div>
+                </div>
+            `;
 
             content.innerHTML = html;
         }
