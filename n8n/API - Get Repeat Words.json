@@ -1,0 +1,135 @@
+{
+  "id": "mDgiKAx6dN52uGNZ",
+  "name": "API - Get Repeat Words",
+  "active": true,
+  "nodes": [
+    {
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "parameters": {
+        "path": "words-repeat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    },
+    {
+      "id": "code-params",
+      "name": "Parse Parameters",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0],
+      "parameters": {
+        "jsCode": "const query = $input.first().json.query || {};\nconst mode = query.mode || 'grouped'; // 'grouped' or 'random'\nconst limit = mode === 'random' ? 100 : 1000;\n\nreturn [{ json: { mode, limit } }];"
+      }
+    },
+    {
+      "id": "mongo-count",
+      "name": "MongoDB: Count Total",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [440, 0],
+      "parameters": {
+        "operation": "aggregate",
+        "collection": "words",
+        "query": "=[{\"$match\": {\"stage\": \"repeat\"}}, {\"$group\": {\"_id\": {\"$dateToString\": {\"format\": \"%Y-%m-%d\", \"date\": \"$trainDate\"}}, \"count\": {\"$sum\": 1}}}, {\"$sort\": {\"_id\": -1}}]",
+        "options": {}
+      },
+      "credentials": {
+        "mongoDb": {
+          "id": "p5lVP30sDORJCo8v",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "id": "code-store-total",
+      "name": "Store Total",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0],
+      "parameters": {
+        "jsCode": "const groups = $input.all().map(item => ({\n  date: item.json._id,\n  count: item.json.count\n}));\nconst total = groups.reduce((sum, g) => sum + g.count, 0);\n\nreturn [{ json: { groups, total } }];"
+      }
+    },
+    {
+      "id": "code-query",
+      "name": "Build Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [770, 0],
+      "parameters": {
+        "jsCode": "const mode = $('Parse Parameters').first().json.mode;\n\nlet query;\nif (mode === 'random') {\n  query = [\n    {\"$match\": {\"stage\": \"repeat\"}},\n    {\"$sample\": {\"size\": 100}},\n    {\"$project\": {\"word\": 1, \"translate\": 1, \"transcript\": 1, \"example\": 1, \"trainDate\": 1}}\n  ];\n} else {\n  query = [\n    {\"$match\": {\"stage\": \"repeat\"}},\n    {\"$sort\": {\"trainDate\": -1, \"word\": 1}},\n    {\"$project\": {\"word\": 1, \"translate\": 1, \"transcript\": 1, \"example\": 1, \"trainDate\": 1}}\n  ];\n}\n\nreturn [{ json: { query: JSON.stringify(query), mode } }];"
+      }
+    },
+    {
+      "id": "mongo-words",
+      "name": "MongoDB: Get Words Page",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [990, 0],
+      "parameters": {
+        "operation": "aggregate",
+        "collection": "words",
+        "query": "={{ $json.query }}",
+        "options": {}
+      },
+      "credentials": {
+        "mongoDb": {
+          "id": "p5lVP30sDORJCo8v",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "id": "code-1",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1210, 0],
+      "parameters": {
+        "jsCode": "const params = $('Store Total').first().json;\nconst total = params.total;\nconst mode = $('Build Query').first().json.mode;\n\nconst allWords = $input.all().map(item => {\n  const data = item.json;\n  const wordLower = data.word.toLowerCase();\n  const audioUrl = `https://vocab.aimediaflow.net/audio/${encodeURIComponent(wordLower)}.mp3`;\n  \n  let trainDate = null;\n  if (data.trainDate) {\n    trainDate = new Date(data.trainDate).toISOString().split('T')[0];\n  }\n  \n  return {\n    _id: data._id,\n    word: data.word,\n    translate: data.translate,\n    transcript: data.transcript || '',\n    audio: audioUrl,\n    example: data.example || '',\n    trainDate: trainDate\n  };\n});\n\nif (mode === 'random') {\n  return [{ json: { \n    words: allWords,\n    total: allWords.length,\n    mode: 'random'\n  } }];\n}\n\n// Group words by trainDate\nconst groupedWords = {};\nallWords.forEach(word => {\n  const date = word.trainDate || 'unknown';\n  if (!groupedWords[date]) {\n    groupedWords[date] = [];\n  }\n  groupedWords[date].push(word);\n});\n\nconst dateGroups = Object.keys(groupedWords)\n  .sort((a, b) => b.localeCompare(a))\n  .map(date => ({\n    date: date,\n    words: groupedWords[date],\n    count: groupedWords[date].length\n  }));\n\nreturn [{ json: { \n  dateGroups,\n  total,\n  mode: 'grouped'\n} }];"
+      }
+    },
+    {
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1430, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Parse Parameters", "type": "main", "index": 0}]]
+    },
+    "Parse Parameters": {
+      "main": [[{"node": "MongoDB: Count Total", "type": "main", "index": 0}]]
+    },
+    "MongoDB: Count Total": {
+      "main": [[{"node": "Store Total", "type": "main", "index": 0}]]
+    },
+    "Store Total": {
+      "main": [[{"node": "Build Query", "type": "main", "index": 0}]]
+    },
+    "Build Query": {
+      "main": [[{"node": "MongoDB: Get Words Page", "type": "main", "index": 0}]]
+    },
+    "MongoDB: Get Words Page": {
+      "main": [[{"node": "Format Response", "type": "main", "index": 0}]]
+    },
+    "Format Response": {
+      "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

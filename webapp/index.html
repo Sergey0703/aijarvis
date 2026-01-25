@@ -471,6 +471,18 @@
             align-items: center;
         }
 
+        .word-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .word-number {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+            min-width: 24px;
+        }
+
         @keyframes pulse {
             from { transform: scale(1); }
             to { transform: scale(1.1); }
@@ -1927,18 +1939,19 @@
             return `
                 <div class="word-card ${isHighlighted ? 'highlighted' : ''}" data-index="${index}">
                     <div class="word-header">
-                        <span class="word-text">${escapeHtml(word.word)}</span>
-                        <div class="word-actions">
+                        <div class="word-left">
+                            <span class="word-number">${index + 1}.</span>
+                            <span class="word-text">${escapeHtml(word.word)}</span>
                             <button class="repeat-btn" id="dict-repeat-btn-${index}"
                                     data-action="mark-repeat" data-word-id="${escapeHtml(wordId)}" data-widx="${index}"
                                     title="Mark for repeat">
                                 🔄
                             </button>
-                            <button class="audio-btn" id="dict-audio-btn-${index}"
-                                    data-action="play-dict" data-url="${escapeHtml(audioUrl)}" data-widx="${index}">
-                                &#x1F50A;
-                            </button>
                         </div>
+                        <button class="audio-btn" id="dict-audio-btn-${index}"
+                                data-action="play-dict" data-url="${escapeHtml(audioUrl)}" data-widx="${index}">
+                            &#x1F50A;
+                        </button>
                     </div>
                     ${transcript ? `<div class="transcript">${escapeHtml(transcript)}</div>` : ''}
                     <div class="translate ${isRevealed ? '' : 'hidden'}" data-action="reveal-translate" data-widx="${index}">${escapeHtml(word.translate)}</div>

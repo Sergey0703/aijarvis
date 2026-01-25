@@ -1,0 +1,123 @@
+{
+  "id": "Lxv46meazEf9huJY",
+  "name": "API - Get All Words",
+  "active": true,
+  "nodes": [
+    {
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": {
+        "path": "words-all",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "dict-api-webhook-123"
+    },
+    {
+      "id": "mongo-words",
+      "name": "MongoDB: Get All Words",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [224, 0],
+      "parameters": {
+        "collection": "words",
+        "options": {
+          "limit": 200,
+          "sort": "{ \"trainDate\": 1 }"
+        }
+      },
+      "credentials": {
+        "mongoDb": {
+          "id": "p5lVP30sDORJCo8v",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "id": "set-fields-update",
+      "name": "Prepare Update Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [336, 160],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "stage",
+              "value": "new",
+              "type": "string",
+              "id": "7298d14d-a5cc-4084-b83a-0b54ce9c7d32"
+            },
+            {
+              "name": "trainDate",
+              "value": "={{ new Date() }}",
+              "type": "object",
+              "id": "1e28a1ed-978e-4e18-8007-9ea4b77dff07"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "mongo-update",
+      "name": "MongoDB: Update Stage",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [560, 160],
+      "parameters": {
+        "operation": "update",
+        "collection": "words",
+        "updateKey": "_id",
+        "fields": "stage,trainDate",
+        "options": {}
+      },
+      "credentials": {
+        "mongoDb": {
+          "id": "p5lVP30sDORJCo8v",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "id": "code-format",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [448, 0],
+      "parameters": {
+        "jsCode": "const words = $('MongoDB: Get All Words').all().map(item => {\n  const data = item.json;\n  const wordLower = data.word.toLowerCase();\n  const audioUrl = `https://vocab.aimediaflow.net/audio/${encodeURIComponent(wordLower)}.mp3`;\n  \n  return {\n    _id: data._id,\n    word: data.word,\n    translate: data.translate,\n    transcript: data.transcript || '',\n    audio: audioUrl\n  };\n});\n\nreturn [{ json: { \n  words: words,\n  total: words.length\n} }];"
+      }
+    },
+    {
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [672, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {"name": "Access-Control-Allow-Origin", "value": "*"}
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "MongoDB: Get All Words", "type": "main", "index": 0}]]},
+    "MongoDB: Get All Words": {"main": [[{"node": "Prepare Update Fields", "type": "main", "index": 0}]]},
+    "Prepare Update Fields": {"main": [[{"node": "MongoDB: Update Stage", "type": "main", "index": 0}]]},
+    "MongoDB: Update Stage": {"main": [[{"node": "Format Response", "type": "main", "index": 0}]]},
+    "Format Response": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"}
+}

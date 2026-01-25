@@ -1,64 +1,60 @@
 {
+  "id": "xpoa9u1Vds4eldJ9",
   "name": "Telegram Word Quiz (Scheduled) - FIXED v2",
+  "active": true,
   "nodes": [
     {
-      "parameters": {
-        "collection": "words",
-        "options": {
-          "limit": 10
-        },
-        "query": "={ \"stage\": \"repeat\" }"
-      },
+      "parameters": {"triggerTimes": {"item": [{"hour": 10, "minute": 30}]}},
+      "id": "ed1e83dc-32e4-4d7e-9a01-2783c9b047ce",
+      "name": "Schedule Trigger (10:30 AM)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [1040, 272]
+    },
+    {
+      "parameters": {"collection": "words", "options": {"limit": 10}, "query": "={ \"stage\": \"repeat\" }"},
       "id": "8852fe88-eef8-48fc-a8e3-1fdb1d3b6f32",
       "name": "Get Target (Repeat)",
       "type": "n8n-nodes-base.mongoDb",
       "typeVersion": 1,
-      "position": [
-        1440,
-        272
-      ],
-      "credentials": {
-        "mongoDb": {
-          "id": "p5lVP30sDORJCo8v",
-          "name": "MongoDB account"
-        }
-      }
+      "position": [1440, 272],
+      "credentials": {"mongoDb": {"id": "p5lVP30sDORJCo8v", "name": "MongoDB account"}}
     },
     {
-      "parameters": {
-        "collection": "words",
-        "options": {
-          "limit": 40
-        },
-        "query": "={ \"stage\": \"repeat\" }"
-      },
+      "parameters": {"collection": "words", "options": {"limit": 40}, "query": "={ \"stage\": \"repeat\" }"},
       "id": "1bb7d9aa-48ab-4610-9253-d0351258e5cc",
       "name": "Get Distractors",
       "type": "n8n-nodes-base.mongoDb",
       "typeVersion": 1,
-      "position": [
-        1664,
-        272
-      ],
-      "credentials": {
-        "mongoDb": {
-          "id": "p5lVP30sDORJCo8v",
-          "name": "MongoDB account"
-        }
-      }
+      "position": [1664, 272],
+      "credentials": {"mongoDb": {"id": "p5lVP30sDORJCo8v", "name": "MongoDB account"}}
     },
     {
       "parameters": {
-        "jsCode": "const targets = $items(\"Get Target (Repeat)\");\nconst allDistractors = $items(\"Get Distractors\").map(i => i.json);\n\n// Функция для перемешивания массива\nfunction shuffle(array) {\n  for (let i = array.length - 1; i > 0; i--) {\n    const j = Math.floor(Math.random() * (i + 1));\n    [array[i], array[j]] = [array[j], array[i]];\n  }\n  return array;\n}\n\nreturn targets.map((item, index) => {\n  const target = item.json;\n  \n  // 1. Фильтруем дистракторы, чтобы не попалось само целевое слово\n  let distractors = allDistractors\n    .filter(d => d.word.trim().toLowerCase() !== target.word.trim().toLowerCase())\n    // Перемешиваем дистракторы для каждого слова, чтобы они были разные\n    .sort(() => 0.5 - Math.random()) \n    .slice(0, 3);\n\n  // 2. Создаем опции (правильный + 3 неправильных)\n  const options = [\n    { text: target.translate, callback_data: `check:${target._id}:correct` },\n    ...distractors.map(d => ({ text: d.translate, callback_data: `check:${target._id}:wrong:${d.word}` }))\n  ];\n\n  const shuffledOptions = shuffle([...options]);\n\n  // 3. Формируем клавиатуру (2 колонки)\n  const inline_keyboard = [];\n  for (let i = 0; i < shuffledOptions.length; i += 2) {\n    inline_keyboard.push(shuffledOptions.slice(i, i + 2));\n  }\n\n  // 4. Текст вопроса\n  let questionText = `🎯 <b>${target.word}</b>`;\n  if (target.example) {\n     const maskedExample = target.example.replace(new RegExp(target.word, 'gi'), '_______');\n     questionText += `\\\\n\\\\n📝 <i>${maskedExample}</i>`;\n  }\n  if (target.transcription) {\n      questionText += `\\\\n\\\\n🗣 [${target.transcription}]`;\n  }\n  questionText += ' 👇 <i>Choose translation:</i>';\n\n  // 5. Аудио\n  let audioUrl = null;\n  if (target.audio) {\n    let url = target.audio;\n    if (url.startsWith('[sound:')) {\n        url = url.slice(7, -1);\n    }\n    audioUrl = url;\n  }\n\n  let chatId = 940676896; // Ваш ID\n\n  return {\n    json: {\n      chatId,\n      questionText,\n      keyboard_rows: { inline_keyboard },\n      audioUrl,\n      wordIndex: index + 1 // Чтобы видеть номер вопроса\n    }\n  };\n});"
+        "jsCode": "const targets = $items(\"Get Target (Repeat)\");\nconst allDistractors = $items(\"Get Distractors\").map(i => i.json);\n\nfunction shuffle(array) {\n  for (let i = array.length - 1; i > 0; i--) {\n    const j = Math.floor(Math.random() * (i + 1));\n    [array[i], array[j]] = [array[j], array[i]];\n  }\n  return array;\n}\n\nreturn targets.map((item, index) => {\n  const target = item.json;\n  \n  let distractors = allDistractors\n    .filter(d => d.word.trim().toLowerCase() !== target.word.trim().toLowerCase())\n    .sort(() => 0.5 - Math.random()) \n    .slice(0, 3);\n\n  const options = [\n    { text: target.translate, callback_data: `check:${target._id}:correct` },\n    ...distractors.map(d => ({ text: d.translate, callback_data: `check:${target._id}:wrong:${d.word}` }))\n  ];\n\n  const shuffledOptions = shuffle([...options]);\n\n  const inline_keyboard = [];\n  for (let i = 0; i < shuffledOptions.length; i += 2) {\n    inline_keyboard.push(shuffledOptions.slice(i, i + 2));\n  }\n\n  let questionText = `🎯 <b>${target.word}</b>`;\n  if (target.example) {\n     const maskedExample = target.example.replace(new RegExp(target.word, 'gi'), '_______');\n     questionText += `\\n\\n📝 <i>${maskedExample}</i>`;\n  }\n  if (target.transcription) {\n      questionText += `\\n\\n🗣 [${target.transcription}]`;\n  }\n  questionText += ' 👇 <i>Choose translation:</i>';\n\n  let audioUrl = null;\n  if (target.audio) {\n    let url = target.audio;\n    if (url.startsWith('[sound:')) {\n        url = url.slice(7, -1);\n    }\n    audioUrl = url;\n  }\n\n  let chatId = 940676896;\n\n  return { json: { chatId, questionText, keyboard_rows: { inline_keyboard }, audioUrl, wordIndex: index + 1 } };\n});"
       },
       "id": "ba9cfbcb-20f8-4b7a-b7ac-ac4f9239b35c",
       "name": "Prepare Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 1,
-      "position": [
-        1888,
-        272
-      ]
+      "position": [1888, 272]
+    },
+    {
+      "parameters": {"conditions": {"string": [{"value1": "={{ $json.audioUrl }}", "operation": "isNotEmpty"}]}},
+      "id": "404f865c-2021-40dd-aa9b-40e743ff51d0",
+      "name": "Has Audio?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [2112, 272]
+    },
+    {
+      "parameters": {"operation": "sendAudio", "chatId": "={{ $json.chatId }}", "file": "={{ $json.audioUrl }}", "additionalFields": {}},
+      "id": "9ddb7afc-1bf1-402c-a8f8-a879989e2098",
+      "name": "Send Audio",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [2336, 192],
+      "credentials": {"telegramApi": {"id": "44mDjW8nHCGChobZ", "name": "Telegram account"}}
     },
     {
       "parameters": {
@@ -67,208 +63,26 @@
         "replyMarkup": "inlineKeyboard",
         "inlineKeyboard": {
           "rows": [
-            {
-              "row": {
-                "buttons": [
-                  {
-                    "text": "={{ $json.keyboard_rows.inline_keyboard[0][0].text }}",
-                    "additionalFields": {
-                      "callback_data": "={{ 'quiz|' + $json.keyboard_rows.inline_keyboard[0][0].callback_data }}"
-                    }
-                  },
-                  {
-                    "text": "={{ $json.keyboard_rows.inline_keyboard[0][1].text }}",
-                    "additionalFields": {
-                      "callback_data": "={{'quiz|' + $json.keyboard_rows.inline_keyboard[0][1].callback_data }}"
-                    }
-                  }
-                ]
-              }
-            },
-            {
-              "row": {
-                "buttons": [
-                  {
-                    "text": "={{ $json.keyboard_rows.inline_keyboard[1][0].text }}",
-                    "additionalFields": {
-                      "callback_data": "={{'quiz|' + $json.keyboard_rows.inline_keyboard[1][0].callback_data }}"
-                    }
-                  },
-                  {
-                    "text": "={{ $json.keyboard_rows.inline_keyboard[1][1].text }}",
-                    "additionalFields": {
-                      "callback_data": "={{'quiz|' + $json.keyboard_rows.inline_keyboard[1][1].callback_data }}"
-                    }
-                  }
-                ]
-              }
-            }
+            {"row": {"buttons": [{"text": "={{ $json.keyboard_rows.inline_keyboard[0][0].text }}", "additionalFields": {"callback_data": "={{ 'quiz|' + $json.keyboard_rows.inline_keyboard[0][0].callback_data }}"}}, {"text": "={{ $json.keyboard_rows.inline_keyboard[0][1].text }}", "additionalFields": {"callback_data": "={{'quiz|' + $json.keyboard_rows.inline_keyboard[0][1].callback_data }}"}}]}},
+            {"row": {"buttons": [{"text": "={{ $json.keyboard_rows.inline_keyboard[1][0].text }}", "additionalFields": {"callback_data": "={{'quiz|' + $json.keyboard_rows.inline_keyboard[1][0].callback_data }}"}}, {"text": "={{ $json.keyboard_rows.inline_keyboard[1][1].text }}", "additionalFields": {"callback_data": "={{'quiz|' + $json.keyboard_rows.inline_keyboard[1][1].callback_data }}"}}]}}
           ]
         },
-        "additionalFields": {
-          "parse_mode": "HTML"
-        }
+        "additionalFields": {"parse_mode": "HTML"}
       },
       "id": "3766aa41-448d-4c3f-a25d-c2a7f78aaefd",
       "name": "Send Question",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
-      "position": [
-        2336,
-        464
-      ],
-      "webhookId": "e2242c14-2b11-4c69-a6d5-dabc1fa49b30",
-      "credentials": {
-        "telegramApi": {
-          "id": "44mDjW8nHCGChobZ",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "string": [
-            {
-              "value1": "={{ $json.audioUrl }}",
-              "operation": "isNotEmpty"
-            }
-          ]
-        }
-      },
-      "id": "404f865c-2021-40dd-aa9b-40e743ff51d0",
-      "name": "Has Audio?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [
-        2112,
-        272
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "sendAudio",
-        "chatId": "={{ $json.chatId }}",
-        "file": "={{ $json.audioUrl }}",
-        "additionalFields": {}
-      },
-      "id": "9ddb7afc-1bf1-402c-a8f8-a879989e2098",
-      "name": "Send Audio",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1,
-      "position": [
-        2336,
-        192
-      ],
-      "webhookId": "8e25318a-bddb-4baa-892f-efb7750be270",
-      "credentials": {
-        "telegramApi": {
-          "id": "44mDjW8nHCGChobZ",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "triggerTimes": {
-          "item": [
-            {
-              "hour": 10,
-              "minute": 30
-            }
-          ]
-        }
-      },
-      "id": "ed1e83dc-32e4-4d7e-9a01-2783c9b047ce",
-      "name": "Schedule Trigger (10:30 AM)",
-      "type": "n8n-nodes-base.cron",
-      "typeVersion": 1,
-      "position": [
-        1040,
-        272
-      ]
+      "position": [2336, 464],
+      "credentials": {"telegramApi": {"id": "44mDjW8nHCGChobZ", "name": "Telegram account"}}
     }
   ],
-  "pinData": {},
   "connections": {
-    "Get Target (Repeat)": {
-      "main": [
-        [
-          {
-            "node": "Get Distractors",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Distractors": {
-      "main": [
-        [
-          {
-            "node": "Prepare Message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Message": {
-      "main": [
-        [
-          {
-            "node": "Has Audio?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Has Audio?": {
-      "main": [
-        [
-          {
-            "node": "Send Audio",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Send Question",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Send Question",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Schedule Trigger (10:30 AM)": {
-      "main": [
-        [
-          {
-            "node": "Get Target (Repeat)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
+    "Schedule Trigger (10:30 AM)": {"main": [[{"node": "Get Target (Repeat)", "type": "main", "index": 0}]]},
+    "Get Target (Repeat)": {"main": [[{"node": "Get Distractors", "type": "main", "index": 0}]]},
+    "Get Distractors": {"main": [[{"node": "Prepare Message", "type": "main", "index": 0}]]},
+    "Prepare Message": {"main": [[{"node": "Has Audio?", "type": "main", "index": 0}]]},
+    "Has Audio?": {"main": [[{"node": "Send Audio", "type": "main", "index": 0}, {"node": "Send Question", "type": "main", "index": 0}], [{"node": "Send Question", "type": "main", "index": 0}]]}
   },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "availableInMCP": false
-  },
-  "versionId": "0dc0f30d-ed40-4c7b-8c61-624c49c79f49",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "6cb256a7bbd0f6147fbf058931ef9d6e6b74163148390272817b18c9ab14a365"
-  },
-  "id": "xpoa9u1Vds4eldJ9",
-  "tags": []
+  "settings": {"executionOrder": "v1"}
 }
