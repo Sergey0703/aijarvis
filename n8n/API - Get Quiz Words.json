@@ -1,0 +1,94 @@
+{
+  "id": "bqo0Dx6ceGrDXSsN",
+  "name": "API - Get Quiz Words",
+  "active": true,
+  "nodes": [
+    {
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": {
+        "path": "quiz-words",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "mongo-target",
+      "name": "MongoDB: Get Target Words",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [224, 0],
+      "parameters": {
+        "collection": "words",
+        "query": "={ \"stage\": \"repeat\" }",
+        "options": {
+          "limit": 10
+        }
+      },
+      "credentials": {
+        "mongoDb": {
+          "id": "p5lVP30sDORJCo8v",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "id": "mongo-distractors",
+      "name": "MongoDB: Get Distractors",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [448, 0],
+      "parameters": {
+        "collection": "words",
+        "query": "={ \"stage\": \"repeat\" }",
+        "options": {
+          "limit": 40
+        }
+      },
+      "credentials": {
+        "mongoDb": {
+          "id": "p5lVP30sDORJCo8v",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "id": "code-format",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [672, 0],
+      "parameters": {
+        "jsCode": "const targets = $('MongoDB: Get Target Words').all().map(item => {\n  const data = item.json;\n  const wordLower = data.word.toLowerCase();\n  const audioUrl = `https://vocab.aimediaflow.net/audio/${encodeURIComponent(wordLower)}.mp3`;\n  \n  return {\n    _id: data._id,\n    word: data.word,\n    translate: data.translate,\n    transcript: data.transcript || '',\n    audio: audioUrl\n  };\n});\n\nconst distractors = $('MongoDB: Get Distractors').all().map(item => {\n  const data = item.json;\n  return {\n    _id: data._id,\n    word: data.word,\n    translate: data.translate\n  };\n});\n\nreturn [{ json: { \n  targets: targets,\n  distractors: distractors,\n  total: targets.length\n} }];"
+      }
+    },
+    {
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [896, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {"name": "Access-Control-Allow-Origin", "value": "*"}
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "MongoDB: Get Target Words", "type": "main", "index": 0}]]},
+    "MongoDB: Get Target Words": {"main": [[{"node": "MongoDB: Get Distractors", "type": "main", "index": 0}]]},
+    "MongoDB: Get Distractors": {"main": [[{"node": "Format Response", "type": "main", "index": 0}]]},
+    "Format Response": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"}
+}
