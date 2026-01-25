@@ -483,6 +483,28 @@
             min-width: 24px;
         }
 
+        /* Quiz styles */
+        .quiz-container {
+            padding: 16px 0;
+        }
+
+        .quiz-info {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 10px;
+        }
+
+        .quiz-placeholder {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--tg-theme-hint-color);
+            font-size: 16px;
+        }
+
         @keyframes pulse {
             from { transform: scale(1); }
             to { transform: scale(1.1); }
@@ -672,6 +694,10 @@
             <span class="menu-item-icon">📖</span>
             <span class="menu-item-text">Dictionary</span>
         </div>
+        <div class="menu-item" data-action="navigate" data-page="quiz">
+            <span class="menu-item-icon">🧠</span>
+            <span class="menu-item-text">Quiz</span>
+        </div>
     </div>
 
     <!-- Words Page -->
@@ -778,6 +804,34 @@
         <button class="refresh-btn" id="dictRefreshBtn" data-action="refresh-dictionary">&#x21bb;</button>
     </div>
 
+    <!-- Quiz Page -->
+    <div class="page" id="quizPage">
+        <div class="header">
+            <div class="header-left">
+                <button class="burger-btn" data-action="toggle-menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>Quiz</h1>
+            </div>
+            <span class="word-count" id="quizWordCount"></span>
+        </div>
+
+        <div class="sticky-header">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="activeRecall" data-action="quiz-tab">Active Recall</button>
+                <button class="tab-btn" data-tab="scheduled" data-action="quiz-tab">Scheduled</button>
+            </div>
+        </div>
+
+        <div id="quizContent">
+            <div class="loading">Select a tab to start quiz...</div>
+        </div>
+
+        <button class="refresh-btn" id="quizRefreshBtn" data-action="refresh-quiz">&#x21bb;</button>
+    </div>
+
     <script>
         const API_URL = 'https://n8n.aimediaflow.net/webhook/words-repeat';
         const DIGEST_API_URL = 'https://n8n.aimediaflow.net/webhook/get-digests';
@@ -808,6 +862,11 @@
         let dictAutoplayMode = null;
         let dictAutoplayIndex = 0;
         let revealedTranslations = new Set(); // Track which translations are revealed
+
+        // Quiz state
+        let quizWords = [];
+        let quizCurrentTab = 'activeRecall'; // 'activeRecall' or 'scheduled'
+        let quizCurrentIndex = 0;
 
         // Initialize Telegram WebApp
         const tg = window.Telegram?.WebApp;
@@ -1590,6 +1649,13 @@
                 const wordIndex = parseInt(target.getAttribute('data-widx'));
                 markWordForRepeat(wordId, wordIndex);
                 return true;
+            } else if (action === 'quiz-tab') {
+                const tab = target.getAttribute('data-tab');
+                switchQuizTab(tab);
+                return true;
+            } else if (action === 'refresh-quiz') {
+                loadQuiz();
+                return true;
             }
             return false;
         }
@@ -1646,6 +1712,11 @@
                 document.getElementById('dictionaryPage').classList.add('active');
                 if (dictionaryWords.length === 0) {
                     loadDictionary();
+                }
+            } else if (page === 'quiz') {
+                document.getElementById('quizPage').classList.add('active');
+                if (quizWords.length === 0) {
+                    loadQuiz();
                 }
             }
 
@@ -2166,6 +2237,75 @@
                     tg.HapticFeedback.notificationOccurred('error');
                 }
             }
+        }
+
+        // Quiz functions
+        async function loadQuiz() {
+            const content = document.getElementById('quizContent');
+            const refreshBtn = document.getElementById('quizRefreshBtn');
+            const wordCount = document.getElementById('quizWordCount');
+
+            refreshBtn.classList.add('spinning');
+            content.innerHTML = '<div class="loading">Loading quiz words...</div>';
+
+            try {
+                const response = await fetch(DICTIONARY_API_URL);
+                if (!response.ok) throw new Error('Failed to fetch');
+
+                const data = await response.json();
+                // Filter words with stage="repeat" for quiz
+                quizWords = (data.words || []).filter(w => w.stage === 'repeat' || true); // TODO: filter by stage
+
+                wordCount.textContent = `${quizWords.length} words`;
+                quizCurrentIndex = 0;
+                renderQuiz();
+
+            } catch (error) {
+                console.error('Error loading quiz:', error);
+                content.innerHTML = '<div class="empty-state">Failed to load quiz. Tap refresh to try again.</div>';
+            } finally {
+                refreshBtn.classList.remove('spinning');
+            }
+        }
+
+        function switchQuizTab(tab) {
+            if (quizCurrentTab === tab) return;
+
+            quizCurrentTab = tab;
+            quizCurrentIndex = 0;
+
+            // Update tab buttons
+            document.querySelectorAll('#quizPage .tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+            });
+
+            renderQuiz();
+
+            if (tg?.HapticFeedback) {
+                tg.HapticFeedback.selectionChanged();
+            }
+        }
+
+        function renderQuiz() {
+            const content = document.getElementById('quizContent');
+
+            if (quizWords.length === 0) {
+                content.innerHTML = '<div class="empty-state">No words available for quiz.</div>';
+                return;
+            }
+
+            let html = '<div class="quiz-container">';
+
+            if (quizCurrentTab === 'activeRecall') {
+                html += '<div class="quiz-info">Active Recall: See translation, guess the word</div>';
+            } else {
+                html += '<div class="quiz-info">Scheduled: See word, guess the translation</div>';
+            }
+
+            html += '<div class="quiz-placeholder">Quiz functionality coming soon...</div>';
+            html += '</div>';
+
+            content.innerHTML = html;
         }
 
         // Find closest element with data-action
