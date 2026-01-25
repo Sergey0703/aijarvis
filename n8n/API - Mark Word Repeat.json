@@ -1,0 +1,88 @@
+{
+  "id": "hXdItAoWFNQplZXL",
+  "name": "API - Mark Word Repeat",
+  "active": true,
+  "nodes": [
+    {
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "parameters": {
+        "path": "mark-repeat",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "mark-repeat-webhook"
+    },
+    {
+      "id": "code-parse",
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300],
+      "parameters": {
+        "jsCode": "const wordId = $json.body?.wordId;\n\nif (!wordId) {\n  throw new Error('wordId is required');\n}\n\nreturn [{ json: { _id: wordId, stage: 'repeat' } }];"
+      }
+    },
+    {
+      "id": "mongo-update",
+      "name": "Update Word Stage",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [690, 300],
+      "parameters": {
+        "operation": "update",
+        "collection": "words",
+        "updateKey": "_id",
+        "fields": "stage",
+        "options": {}
+      },
+      "credentials": {
+        "mongoDb": {
+          "id": "p5lVP30sDORJCo8v",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "id": "code-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 300],
+      "parameters": {
+        "jsCode": "return [{ json: { success: true, message: 'Word marked for repeat' } }];"
+      }
+    },
+    {
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1130, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {"name": "Access-Control-Allow-Origin", "value": "*"},
+              {"name": "Access-Control-Allow-Methods", "value": "POST, OPTIONS"},
+              {"name": "Access-Control-Allow-Headers", "value": "Content-Type"}
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Parse Request", "type": "main", "index": 0}]]},
+    "Parse Request": {"main": [[{"node": "Update Word Stage", "type": "main", "index": 0}]]},
+    "Update Word Stage": {"main": [[{"node": "Format Response", "type": "main", "index": 0}]]},
+    "Format Response": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"}
+}

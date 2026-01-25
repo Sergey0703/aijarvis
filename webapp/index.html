@@ -424,6 +424,53 @@
             animation: pulse 0.5s infinite alternate;
         }
 
+        /* Repeat button */
+        .repeat-btn {
+            background: #ff9500;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .repeat-btn:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+
+        .repeat-btn.sent {
+            background: #34c759;
+        }
+
+        .repeat-btn.sending {
+            opacity: 0.6;
+        }
+
+        /* Hidden translation */
+        .translate.hidden {
+            filter: blur(8px);
+            cursor: pointer;
+            user-select: none;
+            transition: filter 0.3s ease;
+        }
+
+        .translate.hidden:hover {
+            filter: blur(4px);
+        }
+
+        .word-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
         @keyframes pulse {
             from { transform: scale(1); }
             to { transform: scale(1.1); }
@@ -723,6 +770,7 @@
         const API_URL = 'https://n8n.aimediaflow.net/webhook/words-repeat';
         const DIGEST_API_URL = 'https://n8n.aimediaflow.net/webhook/get-digests';
         const DICTIONARY_API_URL = 'https://n8n.aimediaflow.net/webhook/words-all';
+        const MARK_REPEAT_API_URL = 'https://n8n.aimediaflow.net/webhook/mark-repeat';
 
         // State
         let dateGroups = [];
@@ -747,6 +795,7 @@
         let dictionaryWords = [];
         let dictAutoplayMode = null;
         let dictAutoplayIndex = 0;
+        let revealedTranslations = new Set(); // Track which translations are revealed
 
         // Initialize Telegram WebApp
         const tg = window.Telegram?.WebApp;
@@ -1520,6 +1569,15 @@
                 const wordIndex = parseInt(target.getAttribute('data-widx'));
                 playDictAudioSingle(url, wordIndex);
                 return true;
+            } else if (action === 'reveal-translate') {
+                const wordIndex = parseInt(target.getAttribute('data-widx'));
+                revealTranslation(wordIndex, target);
+                return true;
+            } else if (action === 'mark-repeat') {
+                const wordId = target.getAttribute('data-word-id');
+                const wordIndex = parseInt(target.getAttribute('data-widx'));
+                markWordForRepeat(wordId, wordIndex);
+                return true;
             }
             return false;
         }
@@ -1814,6 +1872,7 @@
 
             refreshBtn.classList.add('spinning');
             content.innerHTML = '<div class="loading">Loading dictionary...</div>';
+            revealedTranslations.clear(); // Reset revealed state on reload
 
             try {
                 const response = await fetch(DICTIONARY_API_URL);
@@ -1862,18 +1921,27 @@
             const transcript = word.transcript && word.transcript !== 'None' ? `/${word.transcript}/` : '';
             const audioUrl = word.audio || '';
             const isHighlighted = dictAutoplayMode && dictAutoplayIndex === index;
+            const wordId = word._id || '';
+            const isRevealed = revealedTranslations.has(index);
 
             return `
                 <div class="word-card ${isHighlighted ? 'highlighted' : ''}" data-index="${index}">
                     <div class="word-header">
                         <span class="word-text">${escapeHtml(word.word)}</span>
-                        <button class="audio-btn" id="dict-audio-btn-${index}"
-                                data-action="play-dict" data-url="${escapeHtml(audioUrl)}" data-widx="${index}">
-                            &#x1F50A;
-                        </button>
+                        <div class="word-actions">
+                            <button class="repeat-btn" id="dict-repeat-btn-${index}"
+                                    data-action="mark-repeat" data-word-id="${escapeHtml(wordId)}" data-widx="${index}"
+                                    title="Mark for repeat">
+                                🔄
+                            </button>
+                            <button class="audio-btn" id="dict-audio-btn-${index}"
+                                    data-action="play-dict" data-url="${escapeHtml(audioUrl)}" data-widx="${index}">
+                                &#x1F50A;
+                            </button>
+                        </div>
                     </div>
                     ${transcript ? `<div class="transcript">${escapeHtml(transcript)}</div>` : ''}
-                    <div class="translate">${escapeHtml(word.translate)}</div>
+                    <div class="translate ${isRevealed ? '' : 'hidden'}" data-action="reveal-translate" data-widx="${index}">${escapeHtml(word.translate)}</div>
                 </div>
             `;
         }
@@ -2025,6 +2093,66 @@
             sharedAudio.play().catch(() => {
                 if (onComplete) onComplete();
             });
+        }
+
+        // Reveal translation on click
+        function revealTranslation(wordIndex, element) {
+            revealedTranslations.add(wordIndex);
+            if (element) {
+                element.classList.remove('hidden');
+            }
+            if (tg?.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+        }
+
+        // Mark word for repeat
+        async function markWordForRepeat(wordId, wordIndex) {
+            if (!wordId) {
+                console.error('No word ID provided');
+                return;
+            }
+
+            const btn = document.getElementById(`dict-repeat-btn-${wordIndex}`);
+            if (!btn || btn.classList.contains('sent') || btn.classList.contains('sending')) {
+                return;
+            }
+
+            btn.classList.add('sending');
+            btn.textContent = '...';
+
+            if (tg?.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
+
+            try {
+                const response = await fetch(MARK_REPEAT_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ wordId: wordId })
+                });
+
+                if (!response.ok) throw new Error('Failed to mark word');
+
+                btn.classList.remove('sending');
+                btn.classList.add('sent');
+                btn.textContent = '✓';
+
+                if (tg?.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+
+            } catch (error) {
+                console.error('Error marking word for repeat:', error);
+                btn.classList.remove('sending');
+                btn.textContent = '🔄';
+
+                if (tg?.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('error');
+                }
+            }
         }
 
         // Find closest element with data-action
