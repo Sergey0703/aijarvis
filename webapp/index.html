@@ -1623,6 +1623,7 @@
 
             sharedAudio.src = url;
             sharedAudio.currentTime = 0;
+            sharedAudio.volume = 1.0;
 
             sharedAudio.onended = () => {
                 if (onComplete) onComplete();
@@ -1654,6 +1655,7 @@
 
             sharedAudio.src = audioUrl;
             sharedAudio.currentTime = 0;
+            sharedAudio.volume = 1.0;
 
             sharedAudio.onended = () => {
                 if (onComplete) onComplete();
@@ -1762,6 +1764,7 @@
 
             sharedAudio.src = url;
             sharedAudio.currentTime = 0;
+            sharedAudio.volume = 1.0;
 
             sharedAudio.onended = () => {
                 if (onComplete) onComplete();
@@ -2530,6 +2533,7 @@
 
             sharedAudio.src = url;
             sharedAudio.currentTime = 0;
+            sharedAudio.volume = 1.0;
 
             sharedAudio.onended = () => {
                 if (onComplete) onComplete();
@@ -2760,11 +2764,17 @@
                     <div class="quiz-result ${isCorrect ? 'correct' : 'wrong'}">
                         ${isCorrect ? '✓ Correct!' : `✗ Wrong! The answer is: ${quizCurrentTab === 'activeRecall' ? currentWord.word : currentWord.translate}`}
                     </div>
-                    <button class="quiz-next-btn" data-action="quiz-next">
-                        ${quizCurrentIndex + 1 >= quizWords.length ? 'See Results' : 'Next Question'}
-                    </button>
                 `;
             }
+
+            // Always show next/skip button
+            html += `
+                <button class="quiz-next-btn" data-action="quiz-next">
+                    ${quizAnswered
+                        ? (quizCurrentIndex + 1 >= quizWords.length ? 'See Results' : 'Next Question')
+                        : (quizCurrentIndex + 1 >= quizWords.length ? 'Skip & See Results' : 'Skip')}
+                </button>
+            `;
 
             html += '</div>'; // quiz-card
 
