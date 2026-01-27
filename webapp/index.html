@@ -1599,7 +1599,7 @@
                 // English + Russian: word -> 1s -> translation -> 2s -> next word
                 playWordAudioAutoplay(word.audio, () => {
                     autoplayTimeout = setTimeout(() => {
-                        speakRussian(word.translate, () => {
+                        speakRussian(word.word, () => {
                             autoplayTimeout = setTimeout(() => {
                                 autoplayIndex++;
                                 playNextWord();
@@ -1637,29 +1637,36 @@
             });
         }
 
-        function speakRussian(text, onComplete) {
-            if (!text || !window.speechSynthesis) {
+        // Play Russian translation audio from pre-generated files
+        function speakRussian(englishWord, onComplete) {
+            if (!englishWord) {
                 if (onComplete) onComplete();
                 return;
             }
 
-            try {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'ru-RU';
-                utterance.rate = 0.9;
+            const wordLower = englishWord.toLowerCase().replace(/ /g, '_');
+            const audioUrl = `https://vocab.aimediaflow.net/audio-ru/${encodeURIComponent(wordLower)}.mp3`;
 
-                utterance.onend = () => {
-                    if (onComplete) onComplete();
-                };
+            // Use shared audio for playback
+            sharedAudio.pause();
+            sharedAudio.onended = null;
+            sharedAudio.onerror = null;
 
-                utterance.onerror = () => {
-                    if (onComplete) onComplete();
-                };
+            sharedAudio.src = audioUrl;
+            sharedAudio.currentTime = 0;
 
-                window.speechSynthesis.speak(utterance);
-            } catch(e) {
+            sharedAudio.onended = () => {
                 if (onComplete) onComplete();
-            }
+            };
+
+            sharedAudio.onerror = () => {
+                console.warn('Russian audio not found:', audioUrl);
+                if (onComplete) onComplete();
+            };
+
+            sharedAudio.play().catch(() => {
+                if (onComplete) onComplete();
+            });
         }
 
         // Random words autoplay
@@ -1732,7 +1739,7 @@
             } else if (randomAutoplayMode === 'both') {
                 playRandomWordAudio(word.audio, () => {
                     autoplayTimeout = setTimeout(() => {
-                        speakRussian(word.translate, () => {
+                        speakRussian(word.word, () => {
                             autoplayTimeout = setTimeout(() => {
                                 randomAutoplayIndex++;
                                 playNextRandomWord();
@@ -2500,7 +2507,7 @@
             } else if (dictAutoplayMode === 'both') {
                 playDictWordAudio(word.audio, () => {
                     autoplayTimeout = setTimeout(() => {
-                        speakRussian(word.translate, () => {
+                        speakRussian(word.word, () => {
                             autoplayTimeout = setTimeout(() => {
                                 dictAutoplayIndex++;
                                 playNextDictWord();
