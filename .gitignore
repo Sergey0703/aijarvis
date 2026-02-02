@@ -83,6 +83,18 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
+# Audio Files (stored in GitHub Releases)
+audio/
+audio-ru/
+*.tar.gz
+
+# Database Backups
+words_backup_*.json
+*.backup.json
+
+# Large data files
+ling.csv
+
 # =====================================
 # ВАЖНО: Всегда проверяйте что .env НЕ закоммичен!
 # Используйте: git status
