@@ -37,53 +37,6 @@
       }
     },
     {
-      "id": "set-fields-update",
-      "name": "Prepare Update Fields",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [336, 160],
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "name": "stage",
-              "value": "new",
-              "type": "string",
-              "id": "7298d14d-a5cc-4084-b83a-0b54ce9c7d32"
-            },
-            {
-              "name": "trainDate",
-              "value": "={{ new Date() }}",
-              "type": "object",
-              "id": "1e28a1ed-978e-4e18-8007-9ea4b77dff07"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      }
-    },
-    {
-      "id": "mongo-update",
-      "name": "MongoDB: Update Stage",
-      "type": "n8n-nodes-base.mongoDb",
-      "typeVersion": 1.1,
-      "position": [560, 160],
-      "parameters": {
-        "operation": "update",
-        "collection": "words",
-        "updateKey": "_id",
-        "fields": "stage,trainDate",
-        "options": {}
-      },
-      "credentials": {
-        "mongoDb": {
-          "id": "p5lVP30sDORJCo8v",
-          "name": "MongoDB account"
-        }
-      }
-    },
-    {
       "id": "code-format",
       "name": "Format Response",
       "type": "n8n-nodes-base.code",
@@ -114,9 +67,7 @@
   ],
   "connections": {
     "Webhook": {"main": [[{"node": "MongoDB: Get All Words", "type": "main", "index": 0}]]},
-    "MongoDB: Get All Words": {"main": [[{"node": "Prepare Update Fields", "type": "main", "index": 0}]]},
-    "Prepare Update Fields": {"main": [[{"node": "MongoDB: Update Stage", "type": "main", "index": 0}]]},
-    "MongoDB: Update Stage": {"main": [[{"node": "Format Response", "type": "main", "index": 0}]]},
+    "MongoDB: Get All Words": {"main": [[{"node": "Format Response", "type": "main", "index": 0}]]},
     "Format Response": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]}
   },
   "settings": {"executionOrder": "v1"}

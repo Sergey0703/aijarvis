@@ -420,6 +420,18 @@
             transform: scale(0.98);
         }
 
+        .autoplay-btn.load-batch-btn {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        .autoplay-btn.load-batch-btn:disabled {
+            background: #6c757d;
+            border-color: #6c757d;
+            cursor: not-allowed;
+        }
+
         .loading {
             display: flex;
             justify-content: center;
@@ -1041,6 +1053,10 @@
                         data-action="dict-autoplay" data-mode="both">
                     ▶ Eng + Rus
                 </button>
+                <button class="autoplay-btn load-batch-btn" id="loadNewBatchBtn"
+                        data-action="load-new-batch">
+                    Load New Batch
+                </button>
             </div>
         </div>
 
@@ -1085,6 +1101,7 @@
         const DICTIONARY_API_URL = 'https://n8n.aimediaflow.net/webhook/words-all';
         const MARK_REPEAT_API_URL = 'https://n8n.aimediaflow.net/webhook/mark-repeat';
         const QUIZ_API_URL = 'https://n8n.aimediaflow.net/webhook/quiz-words';
+        const MARK_NEW_BATCH_API_URL = 'https://n8n.aimediaflow.net/webhook/mark-new-batch';
 
         // State
         let dateGroups = [];
@@ -1110,6 +1127,7 @@
         let dictAutoplayMode = null;
         let dictAutoplayIndex = 0;
         let revealedTranslations = new Set(); // Track which translations are revealed
+        let markedAsRepeat = new Set(); // Track word IDs marked as repeat (exclude from new batch)
 
         // Quiz state
         let quizWords = []; // Target words for quiz
@@ -1939,6 +1957,9 @@
             } else if (action === 'close-word-popup') {
                 closeWordPopup();
                 return true;
+            } else if (action === 'load-new-batch') {
+                loadNewBatch();
+                return true;
             }
             return false;
         }
@@ -2324,6 +2345,7 @@
             refreshBtn.classList.add('spinning');
             content.innerHTML = '<div class="loading">Loading dictionary...</div>';
             revealedTranslations.clear(); // Reset revealed state on reload
+            markedAsRepeat.clear(); // Reset marked words on reload
 
             try {
                 const response = await fetch(DICTIONARY_API_URL);
@@ -2593,6 +2615,9 @@
                 btn.classList.add('sent');
                 btn.textContent = '✓';
 
+                // Track this word as marked for repeat
+                markedAsRepeat.add(wordId);
+
                 if (tg?.HapticFeedback) {
                     tg.HapticFeedback.notificationOccurred('success');
                 }
@@ -2605,6 +2630,81 @@
                 if (tg?.HapticFeedback) {
                     tg.HapticFeedback.notificationOccurred('error');
                 }
+            }
+        }
+
+        // Load New Batch function
+        async function loadNewBatch() {
+            if (dictionaryWords.length === 0) {
+                alert('No words loaded. Please refresh dictionary first.');
+                return;
+            }
+
+            // Get word IDs that are NOT marked as repeat
+            const wordIdsToMark = dictionaryWords
+                .filter(word => word._id && !markedAsRepeat.has(word._id))
+                .map(word => word._id);
+
+            if (wordIdsToMark.length === 0) {
+                alert('All words have been marked for repeat. Loading new batch...');
+                loadDictionary();
+                return;
+            }
+
+            // Confirmation dialog
+            const markedCount = markedAsRepeat.size;
+            const unmarkedCount = wordIdsToMark.length;
+            const confirmMsg = `Mark ${unmarkedCount} words as "new" and load next batch?\n\n` +
+                `Words marked for repeat: ${markedCount}\n` +
+                `Words to mark as new: ${unmarkedCount}`;
+
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            const btn = document.getElementById('loadNewBatchBtn');
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+
+            if (tg?.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
+
+            try {
+                const response = await fetch(MARK_NEW_BATCH_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ wordIds: wordIdsToMark })
+                });
+
+                if (!response.ok) throw new Error('Failed to mark words');
+
+                const result = await response.json();
+                console.log('Marked as new:', result);
+
+                // Clear tracking sets and reload dictionary
+                markedAsRepeat.clear();
+                revealedTranslations.clear();
+
+                if (tg?.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+
+                // Reload dictionary to get next batch
+                loadDictionary();
+
+            } catch (error) {
+                console.error('Error loading new batch:', error);
+                alert('Failed to load new batch. Please try again.');
+
+                if (tg?.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('error');
+                }
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Load New Batch';
             }
         }
 

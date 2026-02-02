@@ -1,6 +1,6 @@
 {
-  "id": "hXdItAoWFNQplZXL",
-  "name": "API - Mark Word Repeat",
+  "id": "XTAGrZwvvoKgsRm5",
+  "name": "API - Mark Words New Batch",
   "active": true,
   "nodes": [
     {
@@ -8,31 +8,30 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 300],
+      "position": [0, 0],
       "parameters": {
-        "path": "mark-repeat",
+        "path": "mark-new-batch",
         "httpMethod": "POST",
         "responseMode": "responseNode",
         "options": {}
-      },
-      "webhookId": "mark-repeat-webhook"
+      }
     },
     {
-      "id": "code-parse",
-      "name": "Parse Request",
+      "id": "code-process",
+      "name": "Process Word IDs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [470, 300],
+      "position": [224, 0],
       "parameters": {
-        "jsCode": "const wordId = $json.body?.wordId;\n\nif (!wordId) {\n  throw new Error('wordId is required');\n}\n\nreturn [{ json: { _id: wordId, stage: 'repeat', trainDate: new Date() } }];"
+        "jsCode": "// Get word IDs from request body\nconst wordIds = $input.first().json.body.wordIds || [];\n\nif (!wordIds.length) {\n  return [{ json: { error: 'No word IDs provided', updated: 0 } }];\n}\n\n// Return items for batch update\nreturn wordIds.map(id => ({\n  json: {\n    _id: id,\n    stage: 'new',\n    trainDate: new Date()\n  }\n}));"
       }
     },
     {
       "id": "mongo-update",
-      "name": "Update Word Stage",
+      "name": "MongoDB: Update Words",
       "type": "n8n-nodes-base.mongoDb",
       "typeVersion": 1.1,
-      "position": [690, 300],
+      "position": [448, 0],
       "parameters": {
         "operation": "update",
         "collection": "words",
@@ -52,9 +51,9 @@
       "name": "Format Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [910, 300],
+      "position": [672, 0],
       "parameters": {
-        "jsCode": "return [{ json: { success: true, message: 'Word marked for repeat' } }];"
+        "jsCode": "const items = $input.all();\nconst updated = items.length;\n\nreturn [{ json: {\n  success: true,\n  updated: updated,\n  message: `Marked ${updated} words as new`\n} }];"
       }
     },
     {
@@ -62,16 +61,14 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1130, 300],
+      "position": [896, 0],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ $json }}",
         "options": {
           "responseHeaders": {
             "entries": [
-              {"name": "Access-Control-Allow-Origin", "value": "*"},
-              {"name": "Access-Control-Allow-Methods", "value": "POST, OPTIONS"},
-              {"name": "Access-Control-Allow-Headers", "value": "Content-Type"}
+              {"name": "Access-Control-Allow-Origin", "value": "*"}
             ]
           }
         }
@@ -79,9 +76,9 @@
     }
   ],
   "connections": {
-    "Webhook": {"main": [[{"node": "Parse Request", "type": "main", "index": 0}]]},
-    "Parse Request": {"main": [[{"node": "Update Word Stage", "type": "main", "index": 0}]]},
-    "Update Word Stage": {"main": [[{"node": "Format Response", "type": "main", "index": 0}]]},
+    "Webhook": {"main": [[{"node": "Process Word IDs", "type": "main", "index": 0}]]},
+    "Process Word IDs": {"main": [[{"node": "MongoDB: Update Words", "type": "main", "index": 0}]]},
+    "MongoDB: Update Words": {"main": [[{"node": "Format Response", "type": "main", "index": 0}]]},
     "Format Response": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]}
   },
   "settings": {"executionOrder": "v1"}
