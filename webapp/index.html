@@ -1305,9 +1305,24 @@
         }
 
         function renderRandomWordCard(word, index) {
-            const transcript = word.transcript && word.transcript !== 'None' ? `/${word.transcript}/` : '';
             const audioUrl = word.audio || '';
             const isHighlighted = randomAutoplayMode && randomAutoplayIndex === index;
+
+            // Build transcript line with meta info
+            const transcriptParts = [];
+            if (word.transcript && word.transcript !== 'None') {
+                transcriptParts.push(`/${word.transcript}/`);
+            }
+            if (word.partOfSpeech) {
+                transcriptParts.push(word.partOfSpeech);
+            }
+            if (word.level) {
+                transcriptParts.push(word.level);
+            }
+            if (word.trainDate) {
+                transcriptParts.push(word.trainDate);
+            }
+            const transcriptLine = transcriptParts.join(' · ');
 
             return `
                 <div class="word-card ${isHighlighted ? 'highlighted' : ''}" data-index="${index}">
@@ -1318,7 +1333,7 @@
                             &#x1F50A;
                         </button>
                     </div>
-                    ${transcript ? `<div class="transcript">${escapeHtml(transcript)}</div>` : ''}
+                    ${transcriptLine ? `<div class="transcript">${escapeHtml(transcriptLine)}</div>` : ''}
                     <div class="translate">${escapeHtml(word.translate)}</div>
                     ${word.example ? `<div class="example">"${escapeHtml(word.example)}"</div>` : ''}
                 </div>
@@ -1411,10 +1426,25 @@
         }
 
         function renderWordCard(word, groupIndex, index) {
-            const transcript = word.transcript && word.transcript !== 'None' ? `/${word.transcript}/` : '';
             const audioUrl = word.audio || '';
             const group = dateGroups[groupIndex];
             const isHighlighted = activeGroupDate === group.date && autoplayIndex === index;
+
+            // Build transcript line with meta info
+            const transcriptParts = [];
+            if (word.transcript && word.transcript !== 'None') {
+                transcriptParts.push(`/${word.transcript}/`);
+            }
+            if (word.partOfSpeech) {
+                transcriptParts.push(word.partOfSpeech);
+            }
+            if (word.level) {
+                transcriptParts.push(word.level);
+            }
+            if (word.trainDate) {
+                transcriptParts.push(word.trainDate);
+            }
+            const transcriptLine = transcriptParts.join(' · ');
 
             return `
                 <div class="group-word-card ${isHighlighted ? 'highlighted' : ''}" data-index="${index}">
@@ -1425,7 +1455,7 @@
                             &#x1F50A;
                         </button>
                     </div>
-                    ${transcript ? `<div class="transcript">${escapeHtml(transcript)}</div>` : ''}
+                    ${transcriptLine ? `<div class="transcript">${escapeHtml(transcriptLine)}</div>` : ''}
                     <div class="translate">${escapeHtml(word.translate)}</div>
                     ${word.example ? `<div class="example">"${escapeHtml(word.example)}"</div>` : ''}
                 </div>

@@ -62,7 +62,7 @@
       "typeVersion": 2,
       "position": [770, 0],
       "parameters": {
-        "jsCode": "const mode = $('Parse Parameters').first().json.mode;\n\nlet query;\nif (mode === 'random') {\n  query = [\n    {\"$match\": {\"stage\": \"repeat\"}},\n    {\"$sample\": {\"size\": 100}},\n    {\"$project\": {\"word\": 1, \"translate\": 1, \"transcript\": 1, \"example\": 1, \"trainDate\": 1}}\n  ];\n} else {\n  query = [\n    {\"$match\": {\"stage\": \"repeat\"}},\n    {\"$sort\": {\"trainDate\": -1, \"word\": 1}},\n    {\"$project\": {\"word\": 1, \"translate\": 1, \"transcript\": 1, \"example\": 1, \"trainDate\": 1}}\n  ];\n}\n\nreturn [{ json: { query: JSON.stringify(query), mode } }];"
+        "jsCode": "const mode = $('Parse Parameters').first().json.mode;\n\nlet query;\nif (mode === 'random') {\n  query = [\n    {\"$match\": {\"stage\": \"repeat\"}},\n    {\"$sample\": {\"size\": 100}},\n    {\"$project\": {\"word\": 1, \"translate\": 1, \"transcript\": 1, \"example\": 1, \"trainDate\": 1, \"partOfSpeech\": 1, \"level\": 1}}\n  ];\n} else {\n  query = [\n    {\"$match\": {\"stage\": \"repeat\"}},\n    {\"$sort\": {\"trainDate\": -1, \"word\": 1}},\n    {\"$project\": {\"word\": 1, \"translate\": 1, \"transcript\": 1, \"example\": 1, \"trainDate\": 1, \"partOfSpeech\": 1, \"level\": 1}}\n  ];\n}\n\nreturn [{ json: { query: JSON.stringify(query), mode } }];"
       }
     },
     {
@@ -91,7 +91,7 @@
       "typeVersion": 2,
       "position": [1210, 0],
       "parameters": {
-        "jsCode": "const params = $('Store Total').first().json;\nconst total = params.total;\nconst mode = $('Build Query').first().json.mode;\n\nconst allWords = $input.all().map(item => {\n  const data = item.json;\n  const wordLower = data.word.toLowerCase();\n  const audioUrl = `https://vocab.aimediaflow.net/audio/${encodeURIComponent(wordLower)}.mp3`;\n  \n  let trainDate = null;\n  if (data.trainDate) {\n    trainDate = new Date(data.trainDate).toISOString().split('T')[0];\n  }\n  \n  return {\n    _id: data._id,\n    word: data.word,\n    translate: data.translate,\n    transcript: data.transcript || '',\n    audio: audioUrl,\n    example: data.example || '',\n    trainDate: trainDate\n  };\n});\n\nif (mode === 'random') {\n  return [{ json: { \n    words: allWords,\n    total: allWords.length,\n    mode: 'random'\n  } }];\n}\n\n// Group words by trainDate\nconst groupedWords = {};\nallWords.forEach(word => {\n  const date = word.trainDate || 'unknown';\n  if (!groupedWords[date]) {\n    groupedWords[date] = [];\n  }\n  groupedWords[date].push(word);\n});\n\nconst dateGroups = Object.keys(groupedWords)\n  .sort((a, b) => b.localeCompare(a))\n  .map(date => ({\n    date: date,\n    words: groupedWords[date],\n    count: groupedWords[date].length\n  }));\n\nreturn [{ json: { \n  dateGroups,\n  total,\n  mode: 'grouped'\n} }];"
+        "jsCode": "const params = $('Store Total').first().json;\nconst total = params.total;\nconst mode = $('Build Query').first().json.mode;\n\nconst allWords = $input.all().map(item => {\n  const data = item.json;\n  const wordLower = data.word.toLowerCase();\n  const audioUrl = `https://vocab.aimediaflow.net/audio/${encodeURIComponent(wordLower)}.mp3`;\n  \n  let trainDate = null;\n  if (data.trainDate) {\n    trainDate = new Date(data.trainDate).toISOString().split('T')[0];\n  }\n  \n  return {\n    _id: data._id,\n    word: data.word,\n    translate: data.translate,\n    transcript: data.transcript || '',\n    audio: audioUrl,\n    example: data.example || '',\n    trainDate: trainDate,\n    partOfSpeech: data.partOfSpeech || '',\n    level: data.level || ''\n  };\n});\n\nif (mode === 'random') {\n  return [{ json: { \n    words: allWords,\n    total: allWords.length,\n    mode: 'random'\n  } }];\n}\n\n// Group words by trainDate\nconst groupedWords = {};\nallWords.forEach(word => {\n  const date = word.trainDate || 'unknown';\n  if (!groupedWords[date]) {\n    groupedWords[date] = [];\n  }\n  groupedWords[date].push(word);\n});\n\nconst dateGroups = Object.keys(groupedWords)\n  .sort((a, b) => b.localeCompare(a))\n  .map(date => ({\n    date: date,\n    words: groupedWords[date],\n    count: groupedWords[date].length\n  }));\n\nreturn [{ json: { \n  dateGroups,\n  total,\n  mode: 'grouped'\n} }];"
       }
     },
     {
@@ -107,29 +107,13 @@
     }
   ],
   "connections": {
-    "Webhook": {
-      "main": [[{"node": "Parse Parameters", "type": "main", "index": 0}]]
-    },
-    "Parse Parameters": {
-      "main": [[{"node": "MongoDB: Count Total", "type": "main", "index": 0}]]
-    },
-    "MongoDB: Count Total": {
-      "main": [[{"node": "Store Total", "type": "main", "index": 0}]]
-    },
-    "Store Total": {
-      "main": [[{"node": "Build Query", "type": "main", "index": 0}]]
-    },
-    "Build Query": {
-      "main": [[{"node": "MongoDB: Get Words Page", "type": "main", "index": 0}]]
-    },
-    "MongoDB: Get Words Page": {
-      "main": [[{"node": "Format Response", "type": "main", "index": 0}]]
-    },
-    "Format Response": {
-      "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]
-    }
+    "Webhook": {"main": [[{"node": "Parse Parameters", "type": "main", "index": 0}]]},
+    "Parse Parameters": {"main": [[{"node": "MongoDB: Count Total", "type": "main", "index": 0}]]},
+    "MongoDB: Count Total": {"main": [[{"node": "Store Total", "type": "main", "index": 0}]]},
+    "Store Total": {"main": [[{"node": "Build Query", "type": "main", "index": 0}]]},
+    "Build Query": {"main": [[{"node": "MongoDB: Get Words Page", "type": "main", "index": 0}]]},
+    "MongoDB: Get Words Page": {"main": [[{"node": "Format Response", "type": "main", "index": 0}]]},
+    "Format Response": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]}
   },
-  "settings": {
-    "executionOrder": "v1"
-  }
+  "settings": {"executionOrder": "v1"}
 }
