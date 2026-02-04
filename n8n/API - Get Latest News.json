@@ -1,0 +1,113 @@
+{
+  "id": "hcue8mjNt49UqJ6B",
+  "name": "API - Get Latest News",
+  "active": true,
+  "nodes": [
+    {
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "parameters": {
+        "path": "news/today",
+        "httpMethod": "GET",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "news-api-webhook",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "datatable-1",
+      "name": "Get Recent News",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [470, 300],
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "MWNgETzBSi4cAIFo",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "createdAt",
+              "condition": "gte",
+              "keyValue": "={{ $now.minus({days: 7}).toISO() }}"
+            }
+          ]
+        },
+        "limit": 20
+      }
+    },
+    {
+      "id": "sort-1",
+      "name": "Sort by Date",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [690, 300],
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "createdAt",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "limit-1",
+      "name": "Limit to 5",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [910, 300],
+      "parameters": {
+        "maxItems": 5
+      }
+    },
+    {
+      "id": "code-format",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 300],
+      "parameters": {
+        "jsCode": "// If no news found, return empty array (not error)\nif (!items || items.length === 0) {\n  return [{ json: { data: [], message: 'No recent news available' } }];\n}\n\n// Format news items\nconst newsItems = items.map(item => ({\n  title: item.json.title || 'No Title',\n  text: item.json.text || '',\n  category: item.json.category || '',\n  url: item.json.url || '',\n  createdAt: item.json.createdAt\n}));\n\nreturn [{ json: { data: newsItems } }];"
+      }
+    },
+    {
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1350, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {"name": "Access-Control-Allow-Origin", "value": "*"},
+              {"name": "Access-Control-Allow-Methods", "value": "GET, OPTIONS"},
+              {"name": "Access-Control-Allow-Headers", "value": "Content-Type"}
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Get Recent News", "type": "main", "index": 0}]]},
+    "Get Recent News": {"main": [[{"node": "Sort by Date", "type": "main", "index": 0}]]},
+    "Sort by Date": {"main": [[{"node": "Limit to 5", "type": "main", "index": 0}]]},
+    "Limit to 5": {"main": [[{"node": "Format Response", "type": "main", "index": 0}]]},
+    "Format Response": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"}
+}
