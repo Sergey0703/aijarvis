@@ -1,0 +1,119 @@
+{
+  "id": "1ZHWSpDLJA3MMrIP",
+  "name": "API - Get Today's Digests",
+  "active": true,
+  "nodes": [
+    {
+      "id": "661f647f-e039-4769-89da-86aae98892db",
+      "name": "Webhook GET",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "parameters": {
+        "path": "news/today",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "0cad0ab0-c35d-43a4-8c60-e2c50544fa7c"
+    },
+    {
+      "id": "01d47436-6b21-4d09-a0f6-bd7c889c98cc",
+      "name": "Get News Table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [224, 0],
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "JnVde1xTjaVHMlMx",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "createdAt",
+              "condition": "gte",
+              "keyValue": "={{ $now.minus({days: 7}).toISO() }}"
+            }
+          ]
+        },
+        "limit": 10
+      }
+    },
+    {
+      "id": "656df0a3-5a6d-48a2-9cf1-c9cfeb1540aa",
+      "name": "Sort",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [480, 0],
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "createdAt",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b3596a89-dde0-4c09-b1f5-ad6193b2f264",
+      "name": "Limit",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [752, 0],
+      "parameters": {}
+    },
+    {
+      "id": "5f9532c4-642b-41b6-8902-53354ffbcd8a",
+      "name": "Update row(s)",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [1104, 0],
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "JnVde1xTjaVHMlMx",
+          "mode": "id"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "deliveredAt": "={{ $now }}"
+          }
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "36e139cb-4ee3-45ed-89d6-5d678cd13b0d",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1552, 0],
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook GET": {"main": [[{"node": "Get News Table", "type": "main", "index": 0}]]},
+    "Get News Table": {"main": [[{"node": "Sort", "type": "main", "index": 0}]]},
+    "Sort": {"main": [[{"node": "Limit", "type": "main", "index": 0}]]},
+    "Limit": {"main": [[{"node": "Update row(s)", "type": "main", "index": 0}]]},
+    "Update row(s)": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"}
+}
