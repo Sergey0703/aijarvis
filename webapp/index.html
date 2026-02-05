@@ -171,6 +171,72 @@
             display: block;
         }
 
+        /* Home Page Styles */
+        .home-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px 0;
+        }
+
+        .home-title {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 12px;
+            color: var(--tg-theme-text-color);
+        }
+
+        .home-subtitle {
+            font-size: 15px;
+            text-align: center;
+            color: var(--tg-theme-hint-color);
+            margin-bottom: 20px;
+        }
+
+        .home-menu-btn {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 24px;
+            background: var(--tg-theme-secondary-bg-color);
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            font-size: 16px;
+        }
+
+        .home-menu-btn:active {
+            transform: scale(0.98);
+            background: color-mix(in srgb, var(--tg-theme-button-color) 20%, var(--tg-theme-secondary-bg-color));
+        }
+
+        .home-menu-icon {
+            font-size: 32px;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .home-menu-content {
+            flex: 1;
+        }
+
+        .home-menu-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--tg-theme-text-color);
+            margin-bottom: 4px;
+        }
+
+        .home-menu-desc {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+        }
+
         /* Digest Page Styles */
         .digest-card {
             background: var(--tg-theme-secondary-bg-color);
@@ -941,7 +1007,11 @@
     <!-- Side Menu -->
     <div class="side-menu" id="sideMenu">
         <div class="menu-header">AI Jarvis</div>
-        <div class="menu-item active" data-action="navigate" data-page="words">
+        <div class="menu-item active" data-action="navigate" data-page="home">
+            <span class="menu-item-icon">🏠</span>
+            <span class="menu-item-text">Home</span>
+        </div>
+        <div class="menu-item" data-action="navigate" data-page="words">
             <span class="menu-item-icon">📚</span>
             <span class="menu-item-text">Vocabulary Review</span>
         </div>
@@ -959,8 +1029,59 @@
         </div>
     </div>
 
+    <!-- Home Page -->
+    <div class="page active" id="homePage">
+        <div class="header">
+            <div class="header-left">
+                <button class="burger-btn" id="burgerBtnHome" data-action="toggle-menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>AI Jarvis</h1>
+            </div>
+        </div>
+
+        <div class="home-container">
+            <h2 class="home-title">Welcome to AI Jarvis</h2>
+            <p class="home-subtitle">Your English Learning Companion</p>
+
+            <button class="home-menu-btn" data-action="navigate" data-page="words">
+                <div class="home-menu-icon">📚</div>
+                <div class="home-menu-content">
+                    <div class="home-menu-title">Vocabulary Review</div>
+                    <div class="home-menu-desc">Review and practice your vocabulary words</div>
+                </div>
+            </button>
+
+            <button class="home-menu-btn" data-action="navigate" data-page="digest">
+                <div class="home-menu-icon">📰</div>
+                <div class="home-menu-content">
+                    <div class="home-menu-title">AI Digest</div>
+                    <div class="home-menu-desc">Daily English news and articles</div>
+                </div>
+            </button>
+
+            <button class="home-menu-btn" data-action="navigate" data-page="dictionary">
+                <div class="home-menu-icon">📖</div>
+                <div class="home-menu-content">
+                    <div class="home-menu-title">Dictionary</div>
+                    <div class="home-menu-desc">Browse all your vocabulary words</div>
+                </div>
+            </button>
+
+            <button class="home-menu-btn" data-action="navigate" data-page="quiz">
+                <div class="home-menu-icon">🧠</div>
+                <div class="home-menu-content">
+                    <div class="home-menu-title">Quiz</div>
+                    <div class="home-menu-desc">Test your knowledge with quizzes</div>
+                </div>
+            </button>
+        </div>
+    </div>
+
     <!-- Words Page -->
-    <div class="page active" id="wordsPage">
+    <div class="page" id="wordsPage">
         <div class="header">
             <div class="header-left">
                 <button class="burger-btn" id="burgerBtn" data-action="toggle-menu">
@@ -1111,7 +1232,7 @@
         let expandedGroup = null; // date string of expanded group
         let activeGroupDate = null; // date of group with active autoplay
         let currentTab = 'grouped'; // 'grouped' or 'random'
-        let currentPage = 'words'; // 'words' or 'digest'
+        let currentPage = 'home'; // 'home', 'words', 'digest', 'dictionary', 'quiz'
 
         // Random tab autoplay state
         let randomAutoplayMode = null;
@@ -2035,7 +2156,9 @@
             // Switch pages
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
 
-            if (page === 'words') {
+            if (page === 'home') {
+                document.getElementById('homePage').classList.add('active');
+            } else if (page === 'words') {
                 document.getElementById('wordsPage').classList.add('active');
             } else if (page === 'digest') {
                 document.getElementById('digestPage').classList.add('active');
