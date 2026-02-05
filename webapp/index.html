@@ -888,6 +888,45 @@
             to { transform: rotate(360deg); }
         }
 
+        /* Pagination */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px 0;
+            margin-top: 12px;
+        }
+
+        .pagination-btn {
+            background: var(--tg-theme-secondary-bg-color);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: var(--tg-theme-text-color);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .pagination-btn:not(:disabled):active {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+        }
+
+        .pagination-info {
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+            min-width: 80px;
+            text-align: center;
+        }
+
         .word-card.highlighted {
             border: 2px solid var(--tg-theme-button-color);
             background: color-mix(in srgb, var(--tg-theme-button-color) 10%, var(--tg-theme-secondary-bg-color));
@@ -1123,6 +1162,12 @@
             </div>
         </div>
 
+        <div id="groupedPagination" class="pagination" style="display: none;">
+            <button class="pagination-btn" id="prevPageBtn" data-action="prev-page">‹ Предыдущая</button>
+            <span class="pagination-info" id="paginationInfo">Страница 1 из 1</span>
+            <button class="pagination-btn" id="nextPageBtn" data-action="next-page">Следующая ›</button>
+        </div>
+
         <div id="content">
             <div class="loading">Loading words...</div>
         </div>
@@ -1234,6 +1279,11 @@
         let currentTab = 'grouped'; // 'grouped' or 'random'
         let currentPage = 'home'; // 'home', 'words', 'digest', 'dictionary', 'quiz'
 
+        // Pagination state
+        let currentPageNum = 1;
+        let totalPages = 1;
+        let daysPerPage = 7;
+
         // Random tab autoplay state
         let randomAutoplayMode = null;
         let randomAutoplayIndex = 0;
@@ -1292,13 +1342,14 @@
             randomWords = [];
             totalWords = 0;
             expandedGroup = null;
+            currentPageNum = 1;
             stopAutoplay();
             stopRandomAutoplay();
             document.getElementById('groupAutoplayControls').style.display = 'none';
             if (currentTab === 'random') {
                 loadRandomWords();
             } else {
-                loadWords();
+                loadWords(1);
             }
         }
 
@@ -1316,10 +1367,12 @@
 
             const randomControls = document.getElementById('randomAutoplayControls');
             const groupControls = document.getElementById('groupAutoplayControls');
+            const pagination = document.getElementById('groupedPagination');
 
             if (tab === 'grouped') {
                 randomControls.style.display = 'none';
                 groupControls.style.display = 'none';
+                pagination.style.display = totalPages > 1 ? 'flex' : 'none';
                 if (dateGroups.length > 0) {
                     renderGroups();
                     document.getElementById('wordCount').textContent = totalWords;
@@ -1329,33 +1382,47 @@
             } else {
                 randomControls.style.display = 'flex';
                 groupControls.style.display = 'none';
+                pagination.style.display = 'none';
                 loadRandomWords();
             }
         }
 
-        async function loadWords() {
+        async function loadWords(page = 1) {
             if (isLoading) return;
             isLoading = true;
 
             const content = document.getElementById('content');
             const refreshBtn = document.getElementById('refreshBtn');
             const wordCount = document.getElementById('wordCount');
+            const pagination = document.getElementById('groupedPagination');
 
             refreshBtn.classList.add('spinning');
             content.innerHTML = '<div class="loading">Loading words...</div>';
 
             try {
-                const response = await fetch(API_URL);
+                const url = `${API_URL}?mode=grouped&page=${page}&daysPerPage=${daysPerPage}`;
+                const response = await fetch(url);
                 if (!response.ok) throw new Error('Failed to fetch');
 
                 const data = await response.json();
                 dateGroups = data.dateGroups || [];
                 totalWords = data.total || 0;
 
+                // Update pagination state
+                if (data.pagination) {
+                    currentPageNum = data.pagination.page;
+                    totalPages = data.pagination.totalPages;
+                    updatePaginationUI();
+                    pagination.style.display = 'flex';
+                } else {
+                    pagination.style.display = 'none';
+                }
+
                 wordCount.textContent = totalWords;
 
                 if (dateGroups.length === 0) {
                     content.innerHTML = '<div class="loading">No words to review</div>';
+                    pagination.style.display = 'none';
                     return;
                 }
 
@@ -1364,10 +1431,21 @@
             } catch (error) {
                 console.error('Error:', error);
                 content.innerHTML = '<div class="error">Failed to load words.<br>Please try again.</div>';
+                document.getElementById('groupedPagination').style.display = 'none';
             } finally {
                 isLoading = false;
                 refreshBtn.classList.remove('spinning');
             }
+        }
+
+        function updatePaginationUI() {
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+            const info = document.getElementById('paginationInfo');
+
+            prevBtn.disabled = currentPageNum <= 1;
+            nextBtn.disabled = currentPageNum >= totalPages;
+            info.textContent = `Неделя ${currentPageNum} из ${totalPages}`;
         }
 
         async function loadRandomWords() {
@@ -2050,6 +2128,16 @@
             } else if (action === 'navigate') {
                 const page = target.getAttribute('data-page');
                 navigateToPage(page);
+                return true;
+            } else if (action === 'prev-page') {
+                if (currentPageNum > 1) {
+                    loadWords(currentPageNum - 1);
+                }
+                return true;
+            } else if (action === 'next-page') {
+                if (currentPageNum < totalPages) {
+                    loadWords(currentPageNum + 1);
+                }
                 return true;
             } else if (action === 'refresh-digest') {
                 loadDigests();
