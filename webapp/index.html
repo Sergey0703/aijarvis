@@ -2160,21 +2160,20 @@
                 document.getElementById('homePage').classList.add('active');
             } else if (page === 'words') {
                 document.getElementById('wordsPage').classList.add('active');
+                // Always reload words to get fresh data (e.g., after marking words for repeat)
+                loadWords();
             } else if (page === 'digest') {
                 document.getElementById('digestPage').classList.add('active');
-                if (!currentDigest) {
-                    loadDigests();
-                }
+                // Always reload digest to get fresh data
+                loadDigests();
             } else if (page === 'dictionary') {
                 document.getElementById('dictionaryPage').classList.add('active');
-                if (dictionaryWords.length === 0) {
-                    loadDictionary();
-                }
+                // Always reload dictionary to get fresh data
+                loadDictionary();
             } else if (page === 'quiz') {
                 document.getElementById('quizPage').classList.add('active');
-                if (quizWords.length === 0) {
-                    loadQuiz();
-                }
+                // Always reload quiz to get fresh data
+                loadQuiz();
             }
 
             currentPage = page;
