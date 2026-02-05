@@ -1,0 +1,78 @@
+{
+  "id": "yWkkS2dSlx4tNlID",
+  "name": "API - Get VOA Podcasts",
+  "active": true,
+  "nodes": [
+    {
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": {
+        "path": "voa-podcasts",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "voa-podcasts-webhook-123"
+    },
+    {
+      "id": "http-1",
+      "name": "Fetch RSS Feed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "parameters": {
+        "url": "https://learningenglish.voanews.com/podcast/?count=50&zoneId=1689",
+        "method": "GET",
+        "options": {}
+      }
+    },
+    {
+      "id": "xml-1",
+      "name": "Parse XML",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [440, 0],
+      "parameters": {
+        "mode": "xmlToJson",
+        "options": {}
+      }
+    },
+    {
+      "id": "code-1",
+      "name": "Extract Episodes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0],
+      "parameters": {
+        "jsCode": "const xml = $input.first().json;\nconst items = xml.rss.channel.item;\n\n// Get last 7 days\nconst now = new Date();\nconst sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);\n\nconst episodes = items\n  .map(item => {\n    const pubDate = new Date(item.pubDate);\n    \n    return {\n      title: item.title,\n      date: pubDate.toISOString().split('T')[0],\n      dateTime: pubDate.toISOString(),\n      audioUrl: item.enclosure?.url || '',\n      duration: item['itunes:duration'] || '',\n      description: item.description || '',\n      link: item.link || '',\n      guid: item.guid || ''\n    };\n  })\n  .filter(ep => new Date(ep.dateTime) >= sevenDaysAgo)\n  .sort((a, b) => b.dateTime.localeCompare(a.dateTime));\n\nreturn [{ json: { \n  episodes,\n  total: episodes.length\n} }];"
+      }
+    },
+    {
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [880, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {"name": "Access-Control-Allow-Origin", "value": "*"}
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Fetch RSS Feed", "type": "main", "index": 0}]]},
+    "Fetch RSS Feed": {"main": [[{"node": "Parse XML", "type": "main", "index": 0}]]},
+    "Parse XML": {"main": [[{"node": "Extract Episodes", "type": "main", "index": 0}]]},
+    "Extract Episodes": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"}
+}

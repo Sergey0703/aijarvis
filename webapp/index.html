@@ -285,6 +285,155 @@
             background: color-mix(in srgb, var(--tg-theme-button-color) 30%, transparent);
         }
 
+        /* Podcasts Page Styles */
+        .podcast-card {
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .podcast-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .podcast-date {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--tg-theme-text-color);
+        }
+
+        .podcast-duration {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .podcast-title {
+            font-size: 15px;
+            color: var(--tg-theme-text-color);
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .podcast-description {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color);
+            line-height: 1.5;
+            margin-bottom: 12px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .podcast-description.expanded {
+            max-height: 500px;
+        }
+
+        .podcast-description p {
+            margin: 0 0 8px 0;
+        }
+
+        .podcast-show-description-btn {
+            background: transparent;
+            border: none;
+            color: var(--tg-theme-link-color);
+            font-size: 13px;
+            cursor: pointer;
+            padding: 4px 0;
+            margin-bottom: 12px;
+            text-decoration: underline;
+        }
+
+        .podcast-play-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .podcast-play-btn:active {
+            transform: scale(0.98);
+        }
+
+        .podcast-play-btn.playing {
+            background: var(--tg-theme-hint-color);
+        }
+
+        /* Audio player controls */
+        .podcast-player {
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 8px;
+        }
+
+        .podcast-progress-container {
+            position: relative;
+            width: 100%;
+            height: 6px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 3px;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .podcast-progress-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: var(--tg-theme-button-color);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .podcast-time {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .podcast-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 8px;
+        }
+
+        .podcast-control-btn {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .podcast-control-btn:active {
+            transform: scale(0.95);
+        }
+
         /* Word translation popup */
         .word-translation-popup {
             position: fixed;
@@ -1066,6 +1215,10 @@
             <span class="menu-item-icon">🧠</span>
             <span class="menu-item-text">Quiz</span>
         </div>
+        <div class="menu-item" data-action="navigate" data-page="podcasts">
+            <span class="menu-item-icon">🎧</span>
+            <span class="menu-item-text">Plain English Podcasts</span>
+        </div>
     </div>
 
     <!-- Home Page -->
@@ -1114,6 +1267,14 @@
                 <div class="home-menu-content">
                     <div class="home-menu-title">Quiz</div>
                     <div class="home-menu-desc">Test your knowledge with quizzes</div>
+                </div>
+            </button>
+
+            <button class="home-menu-btn" data-action="navigate" data-page="podcasts">
+                <div class="home-menu-icon">🎧</div>
+                <div class="home-menu-content">
+                    <div class="home-menu-title">Plain English Podcasts</div>
+                    <div class="home-menu-desc">Listen to Plain English podcasts</div>
                 </div>
             </button>
         </div>
@@ -1261,6 +1422,27 @@
         <button class="refresh-btn" id="quizRefreshBtn" data-action="refresh-quiz">&#x21bb;</button>
     </div>
 
+    <!-- Podcasts Page -->
+    <div class="page" id="podcastsPage">
+        <div class="header">
+            <div class="header-left">
+                <button class="burger-btn" data-action="toggle-menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>Plain English Podcasts</h1>
+            </div>
+            <span class="word-count" id="podcastCount"></span>
+        </div>
+
+        <div id="podcastsContent">
+            <div class="loading">Loading podcasts...</div>
+        </div>
+
+        <button class="refresh-btn" id="podcastsRefreshBtn" data-action="refresh-podcasts">&#x21bb;</button>
+    </div>
+
     <script>
         const API_URL = 'https://n8n.aimediaflow.net/webhook/words-repeat';
         const DIGEST_API_URL = 'https://n8n.aimediaflow.net/webhook/get-digests';
@@ -1268,6 +1450,7 @@
         const MARK_REPEAT_API_URL = 'https://n8n.aimediaflow.net/webhook/mark-repeat';
         const QUIZ_API_URL = 'https://n8n.aimediaflow.net/webhook/quiz-words';
         const MARK_NEW_BATCH_API_URL = 'https://n8n.aimediaflow.net/webhook/mark-new-batch';
+        const PODCASTS_API_URL = 'https://n8n.aimediaflow.net/webhook/voa-podcasts';
 
         // State
         let dateGroups = [];
@@ -1302,6 +1485,12 @@
 
         // Quiz state
         let quizWords = []; // Target words for quiz
+
+        // Podcasts state
+        let podcastEpisodes = [];
+        let currentPodcastAudio = null;
+        let currentPlayingPodcast = null; // index of playing podcast
+        let expandedPodcastDescriptions = new Set(); // track expanded descriptions
         let quizDistractors = []; // All words for distractors
         let quizCurrentTab = 'activeRecall'; // 'activeRecall' or 'scheduled'
         let quizCurrentIndex = 0;
@@ -2065,7 +2254,7 @@
         }
 
         // Handle action from element - use numeric indices instead of date strings
-        function handleAction(target) {
+        function handleAction(target, event) {
             if (!target) return false;
 
             const action = target.getAttribute('data-action');
@@ -2199,6 +2388,34 @@
             } else if (action === 'load-new-batch') {
                 loadNewBatch();
                 return true;
+            } else if (action === 'refresh-podcasts') {
+                loadPodcasts();
+                return true;
+            } else if (action === 'play-podcast') {
+                const index = parseInt(target.getAttribute('data-index'));
+                const url = target.getAttribute('data-url');
+                playPodcast(index, url);
+                return true;
+            } else if (action === 'rewind-podcast') {
+                const index = parseInt(target.getAttribute('data-index'));
+                if (currentPlayingPodcast === index) {
+                    rewindPodcast(15);
+                }
+                return true;
+            } else if (action === 'forward-podcast') {
+                const index = parseInt(target.getAttribute('data-index'));
+                if (currentPlayingPodcast === index) {
+                    forwardPodcast(15);
+                }
+                return true;
+            } else if (action === 'seek-podcast') {
+                const index = parseInt(target.getAttribute('data-index'));
+                seekPodcast(index, target, event);
+                return true;
+            } else if (action === 'toggle-podcast-description') {
+                const index = parseInt(target.getAttribute('data-index'));
+                togglePodcastDescription(index);
+                return true;
             }
             return false;
         }
@@ -2235,6 +2452,7 @@
             stopRandomAutoplay();
             stopDigestAudio();
             stopDictAutoplay();
+            stopPodcast();
 
             // Update menu items
             document.querySelectorAll('.menu-item').forEach(item => {
@@ -2262,6 +2480,10 @@
                 document.getElementById('quizPage').classList.add('active');
                 // Always reload quiz to get fresh data
                 loadQuiz();
+            } else if (page === 'podcasts') {
+                document.getElementById('podcastsPage').classList.add('active');
+                // Always reload podcasts to get fresh data
+                loadPodcasts();
             }
 
             currentPage = page;
@@ -3230,6 +3452,253 @@
             audio.play().catch(console.error);
         }
 
+        // Podcasts functions
+        async function loadPodcasts() {
+            if (isLoading) return;
+            isLoading = true;
+
+            const content = document.getElementById('podcastsContent');
+            const refreshBtn = document.getElementById('podcastsRefreshBtn');
+            const podcastCount = document.getElementById('podcastCount');
+
+            refreshBtn.classList.add('spinning');
+            content.innerHTML = '<div class="loading">Loading podcasts...</div>';
+
+            try {
+                const response = await fetch(PODCASTS_API_URL);
+                if (!response.ok) throw new Error('Failed to fetch');
+
+                const data = await response.json();
+                podcastEpisodes = data.episodes || [];
+
+                podcastCount.textContent = podcastEpisodes.length;
+
+                if (podcastEpisodes.length === 0) {
+                    content.innerHTML = '<div class="loading">No podcasts available</div>';
+                    return;
+                }
+
+                renderPodcasts();
+
+            } catch (error) {
+                console.error('Error:', error);
+                content.innerHTML = '<div class="error">Failed to load podcasts.<br>Please try again.</div>';
+            } finally {
+                isLoading = false;
+                refreshBtn.classList.remove('spinning');
+            }
+        }
+
+        function renderPodcasts() {
+            const content = document.getElementById('podcastsContent');
+
+            let html = '';
+            podcastEpisodes.forEach((episode, index) => {
+                const isPlaying = currentPlayingPodcast === index;
+                const btnText = isPlaying ? '⏸' : '▶';
+                const btnClass = isPlaying ? 'playing' : '';
+
+                // Format duration from seconds to MM:SS
+                const durationSeconds = parseInt(episode.duration) || 0;
+                const minutes = Math.floor(durationSeconds / 60);
+                const seconds = durationSeconds % 60;
+                const formattedDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                // Get current time for this podcast if playing
+                let currentTime = 0;
+                let currentTimeFormatted = '0:00';
+                let progressPercent = 0;
+
+                if (isPlaying && currentPodcastAudio) {
+                    currentTime = currentPodcastAudio.currentTime || 0;
+                    const curMin = Math.floor(currentTime / 60);
+                    const curSec = Math.floor(currentTime % 60);
+                    currentTimeFormatted = `${curMin}:${curSec.toString().padStart(2, '0')}`;
+                    progressPercent = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0;
+                }
+
+                const isDescriptionExpanded = expandedPodcastDescriptions.has(index);
+                const descriptionClass = isDescriptionExpanded ? 'expanded' : '';
+                const showDescBtnText = isDescriptionExpanded ? '▲ Hide description' : '▼ Show description';
+
+                html += `
+                    <div class="podcast-card">
+                        <div class="podcast-header">
+                            <div class="podcast-date">${episode.date}</div>
+                            <div class="podcast-duration">${formattedDuration}</div>
+                        </div>
+                        <div class="podcast-title">${episode.title}</div>
+                        <button class="podcast-show-description-btn"
+                                data-action="toggle-podcast-description"
+                                data-index="${index}">
+                            ${showDescBtnText}
+                        </button>
+                        <div class="podcast-description ${descriptionClass}">
+                            ${episode.description || ''}
+                        </div>
+                        ${isPlaying ? `
+                        <div class="podcast-player">
+                            <div class="podcast-progress-container"
+                                 data-action="seek-podcast"
+                                 data-index="${index}">
+                                <div class="podcast-progress-bar" style="width: ${progressPercent}%"></div>
+                            </div>
+                            <div class="podcast-time">
+                                <span>${currentTimeFormatted}</span>
+                                <span>${formattedDuration}</span>
+                            </div>
+                            <div class="podcast-controls">
+                                <button class="podcast-control-btn"
+                                        data-action="rewind-podcast"
+                                        data-index="${index}">
+                                    ⏪
+                                </button>
+                                <button class="podcast-control-btn"
+                                        data-action="play-podcast"
+                                        data-index="${index}"
+                                        data-url="${episode.audioUrl}">
+                                    ${btnText}
+                                </button>
+                                <button class="podcast-control-btn"
+                                        data-action="forward-podcast"
+                                        data-index="${index}">
+                                    ⏩
+                                </button>
+                            </div>
+                        </div>
+                        ` : `
+                        <button class="podcast-play-btn ${btnClass}"
+                                data-action="play-podcast"
+                                data-index="${index}"
+                                data-url="${episode.audioUrl}">
+                            ${btnText} Play
+                        </button>
+                        `}
+                    </div>
+                `;
+            });
+
+            content.innerHTML = html;
+        }
+
+        function playPodcast(index, audioUrl) {
+            if (currentPlayingPodcast === index && currentPodcastAudio && !currentPodcastAudio.paused) {
+                // Pause current
+                currentPodcastAudio.pause();
+                stopPodcastProgressUpdate();
+                currentPlayingPodcast = null;
+                renderPodcasts();
+            } else {
+                // Stop any playing podcast
+                if (currentPodcastAudio) {
+                    currentPodcastAudio.pause();
+                    currentPodcastAudio.currentTime = 0;
+                    stopPodcastProgressUpdate();
+                }
+
+                // Play new podcast
+                currentPodcastAudio = new Audio(audioUrl);
+                currentPlayingPodcast = index;
+                renderPodcasts();
+
+                currentPodcastAudio.play()
+                    .then(() => {
+                        console.log('Podcast playing:', audioUrl);
+                        startPodcastProgressUpdate();
+                    })
+                    .catch(error => {
+                        console.error('Error playing podcast:', error);
+                        currentPlayingPodcast = null;
+                        stopPodcastProgressUpdate();
+                        renderPodcasts();
+                        alert('Failed to play podcast. Please try again.');
+                    });
+
+                currentPodcastAudio.onended = () => {
+                    currentPlayingPodcast = null;
+                    stopPodcastProgressUpdate();
+                    renderPodcasts();
+                };
+
+                currentPodcastAudio.onerror = () => {
+                    console.error('Audio error:', audioUrl);
+                    currentPlayingPodcast = null;
+                    stopPodcastProgressUpdate();
+                    renderPodcasts();
+                    alert('Failed to load podcast audio.');
+                };
+            }
+        }
+
+        function stopPodcast() {
+            if (currentPodcastAudio) {
+                currentPodcastAudio.pause();
+                currentPodcastAudio.currentTime = 0;
+                currentPodcastAudio = null;
+            }
+            currentPlayingPodcast = null;
+        }
+
+        function rewindPodcast(seconds = 15) {
+            if (currentPodcastAudio) {
+                currentPodcastAudio.currentTime = Math.max(0, currentPodcastAudio.currentTime - seconds);
+                renderPodcasts();
+            }
+        }
+
+        function forwardPodcast(seconds = 15) {
+            if (currentPodcastAudio) {
+                currentPodcastAudio.currentTime = Math.min(
+                    currentPodcastAudio.duration || 0,
+                    currentPodcastAudio.currentTime + seconds
+                );
+                renderPodcasts();
+            }
+        }
+
+        function seekPodcast(index, target, event) {
+            if (currentPlayingPodcast !== index || !currentPodcastAudio) return;
+
+            const progressBar = target;
+            const rect = progressBar.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const percent = Math.max(0, Math.min(1, clickX / rect.width));
+
+            const duration = currentPodcastAudio.duration || 0;
+            currentPodcastAudio.currentTime = duration * percent;
+            renderPodcasts();
+        }
+
+        // Update progress bar while playing
+        let podcastProgressInterval = null;
+
+        function startPodcastProgressUpdate() {
+            if (podcastProgressInterval) {
+                clearInterval(podcastProgressInterval);
+            }
+            podcastProgressInterval = setInterval(() => {
+                if (currentPodcastAudio && !currentPodcastAudio.paused) {
+                    renderPodcasts();
+                }
+            }, 500);
+        }
+
+        function stopPodcastProgressUpdate() {
+            if (podcastProgressInterval) {
+                clearInterval(podcastProgressInterval);
+                podcastProgressInterval = null;
+            }
+        }
+
+        function togglePodcastDescription(index) {
+            if (expandedPodcastDescriptions.has(index)) {
+                expandedPodcastDescriptions.delete(index);
+            } else {
+                expandedPodcastDescriptions.add(index);
+            }
+            renderPodcasts();
+        }
+
         // Find closest element with data-action
         function findActionElement(el) {
             while (el && el !== document.body) {
@@ -3244,7 +3713,7 @@
         // Event delegation
         function onInteraction(e) {
             const target = findActionElement(e.target);
-            if (target && handleAction(target)) {
+            if (target && handleAction(target, e)) {
                 e.preventDefault();
                 e.stopPropagation();
             }
