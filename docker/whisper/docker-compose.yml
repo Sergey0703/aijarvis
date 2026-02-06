@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  whisper-api:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: whisper-transcription
+    ports:
+      - "9000:9000"
+    environment:
+      - ASR_MODEL=base.en
+      - ASR_ENGINE=faster_whisper
+    volumes:
+      - whisper-models:/root/.cache/whisper
+    restart: unless-stopped
+    networks:
+      - aijarvis_default
+
+networks:
+  aijarvis_default:
+    external: true
+
+volumes:
+  whisper-models:

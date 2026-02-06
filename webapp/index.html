@@ -1451,6 +1451,8 @@
         const QUIZ_API_URL = 'https://n8n.aimediaflow.net/webhook/quiz-words';
         const MARK_NEW_BATCH_API_URL = 'https://n8n.aimediaflow.net/webhook/mark-new-batch';
         const PODCASTS_API_URL = 'https://n8n.aimediaflow.net/webhook/voa-podcasts';
+        const AUDIO_PROXY_URL = 'https://n8n.aimediaflow.net/webhook/audio-proxy';
+        const TRANSCRIBE_API_URL = 'https://n8n.aimediaflow.net/webhook/transcribe-podcast';
 
         // State
         let dateGroups = [];
@@ -1491,6 +1493,8 @@
         let currentPodcastAudio = null;
         let currentPlayingPodcast = null; // index of playing podcast
         let expandedPodcastDescriptions = new Set(); // track expanded descriptions
+        let podcastTranscripts = {}; // store transcripts by index
+        let transcribingPodcasts = new Set(); // track which podcasts are being transcribed
         let quizDistractors = []; // All words for distractors
         let quizCurrentTab = 'activeRecall'; // 'activeRecall' or 'scheduled'
         let quizCurrentIndex = 0;
@@ -2415,6 +2419,11 @@
             } else if (action === 'toggle-podcast-description') {
                 const index = parseInt(target.getAttribute('data-index'));
                 togglePodcastDescription(index);
+                return true;
+            } else if (action === 'transcribe-podcast') {
+                const index = parseInt(target.getAttribute('data-index'));
+                const url = target.getAttribute('data-url');
+                transcribePodcast(index, url);
                 return true;
             }
             return false;
@@ -3465,10 +3474,30 @@
             content.innerHTML = '<div class="loading">Loading podcasts...</div>';
 
             try {
-                const response = await fetch(PODCASTS_API_URL);
-                if (!response.ok) throw new Error('Failed to fetch');
+                console.log('Loading podcasts from:', PODCASTS_API_URL);
 
-                const data = await response.json();
+                // Try XMLHttpRequest for better mobile compatibility
+                const data = await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.timeout = 10000; // 10 second timeout
+                    xhr.ontimeout = () => reject(new Error('Request timeout'));
+                    xhr.onerror = () => reject(new Error('Network error'));
+                    xhr.onload = function() {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            try {
+                                resolve(JSON.parse(xhr.responseText));
+                            } catch (e) {
+                                reject(new Error('Invalid JSON: ' + e.message));
+                            }
+                        } else {
+                            reject(new Error('HTTP ' + xhr.status));
+                        }
+                    };
+                    xhr.open('GET', PODCASTS_API_URL);
+                    xhr.send();
+                });
+
+                console.log('Podcasts loaded:', data);
                 podcastEpisodes = data.episodes || [];
 
                 podcastCount.textContent = podcastEpisodes.length;
@@ -3481,8 +3510,8 @@
                 renderPodcasts();
 
             } catch (error) {
-                console.error('Error:', error);
-                content.innerHTML = '<div class="error">Failed to load podcasts.<br>Please try again.</div>';
+                console.error('Error loading podcasts:', error);
+                content.innerHTML = '<div class="error">Failed to load podcasts: ' + error.message + '<br>Please try again.</div>';
             } finally {
                 isLoading = false;
                 refreshBtn.classList.remove('spinning');
@@ -3536,6 +3565,32 @@
                         <div class="podcast-description ${descriptionClass}">
                             ${episode.description || ''}
                         </div>
+
+                        ${(() => {
+                            const isTranscribing = transcribingPodcasts.has(index);
+                            const hasTranscript = podcastTranscripts[index];
+
+                            if (isTranscribing) {
+                                return `<div style="padding: 12px; text-align: center; color: var(--tg-theme-hint-color);">
+                                    ⏳ Transcribing... This may take 3-5 minutes
+                                </div>`;
+                            } else if (hasTranscript) {
+                                return `<div style="margin-top: 12px;">
+                                    <div style="padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-size: 14px; line-height: 1.6;">
+                                        ${hasTranscript}
+                                    </div>
+                                </div>`;
+                            } else {
+                                return `<button class="podcast-show-description-btn"
+                                        data-action="transcribe-podcast"
+                                        data-index="${index}"
+                                        data-url="${episode.audioUrl}"
+                                        style="margin-top: 8px;">
+                                    📝 Show Full Transcript
+                                </button>`;
+                            }
+                        })()}
+
                         ${isPlaying ? `
                         <div class="podcast-player">
                             <div class="podcast-progress-container"
@@ -3597,10 +3652,45 @@
                 }
 
                 // Play new podcast
-                currentPodcastAudio = new Audio(audioUrl);
+                currentPodcastAudio = new Audio();
+                currentPodcastAudio.preload = 'metadata';
+
                 currentPlayingPodcast = index;
                 renderPodcasts();
 
+                // Use audio proxy to avoid redirect issues on mobile
+                const proxiedUrl = AUDIO_PROXY_URL + '?url=' + encodeURIComponent(audioUrl);
+                console.log('Using proxy:', proxiedUrl);
+
+                // Set source and load
+                currentPodcastAudio.src = proxiedUrl;
+                currentPodcastAudio.load();
+
+                // Add event listeners before playing
+                currentPodcastAudio.onended = () => {
+                    currentPlayingPodcast = null;
+                    stopPodcastProgressUpdate();
+                    renderPodcasts();
+                };
+
+                currentPodcastAudio.onerror = (e) => {
+                    console.error('Audio error:', audioUrl, e);
+                    console.error('Error details:', {
+                        error: currentPodcastAudio.error,
+                        code: currentPodcastAudio.error?.code,
+                        message: currentPodcastAudio.error?.message
+                    });
+                    currentPlayingPodcast = null;
+                    stopPodcastProgressUpdate();
+                    renderPodcasts();
+                    alert('Failed to load podcast audio. Error code: ' + (currentPodcastAudio.error?.code || 'unknown'));
+                };
+
+                currentPodcastAudio.onloadedmetadata = () => {
+                    console.log('Podcast metadata loaded:', audioUrl);
+                };
+
+                // Try to play
                 currentPodcastAudio.play()
                     .then(() => {
                         console.log('Podcast playing:', audioUrl);
@@ -3608,25 +3698,22 @@
                     })
                     .catch(error => {
                         console.error('Error playing podcast:', error);
+                        console.error('Error name:', error.name);
+                        console.error('Error message:', error.message);
                         currentPlayingPodcast = null;
                         stopPodcastProgressUpdate();
                         renderPodcasts();
-                        alert('Failed to play podcast. Please try again.');
+
+                        let errorMsg = 'Failed to play podcast. ';
+                        if (error.name === 'NotAllowedError') {
+                            errorMsg += 'Browser blocked autoplay. Please try again.';
+                        } else if (error.name === 'NotSupportedError') {
+                            errorMsg += 'Audio format not supported.';
+                        } else {
+                            errorMsg += error.message || 'Please try again.';
+                        }
+                        alert(errorMsg);
                     });
-
-                currentPodcastAudio.onended = () => {
-                    currentPlayingPodcast = null;
-                    stopPodcastProgressUpdate();
-                    renderPodcasts();
-                };
-
-                currentPodcastAudio.onerror = () => {
-                    console.error('Audio error:', audioUrl);
-                    currentPlayingPodcast = null;
-                    stopPodcastProgressUpdate();
-                    renderPodcasts();
-                    alert('Failed to load podcast audio.');
-                };
             }
         }
 
@@ -3697,6 +3784,74 @@
                 expandedPodcastDescriptions.add(index);
             }
             renderPodcasts();
+        }
+
+        async function transcribePodcast(index, audioUrl) {
+            if (transcribingPodcasts.has(index) || podcastTranscripts[index]) return;
+
+            transcribingPodcasts.add(index);
+            renderPodcasts();
+
+            try {
+                console.log('Starting transcription for podcast:', index);
+                const url = TRANSCRIBE_API_URL + '?audioUrl=' + encodeURIComponent(audioUrl) + '&podcastId=' + index;
+
+                const xhr = new XMLHttpRequest();
+                xhr.timeout = 600000; // 10 minutes timeout
+                xhr.ontimeout = () => {
+                    throw new Error('Transcription timeout');
+                };
+                xhr.onerror = () => {
+                    throw new Error('Network error');
+                };
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            let transcript = data.transcript || 'No transcript available';
+
+                            // Parse nested JSON if it's a string
+                            if (typeof transcript === 'string' && transcript.startsWith('{')) {
+                                try {
+                                    // Parse double-escaped JSON: {"data": "{...}"}
+                                    const parsed = JSON.parse(transcript);
+                                    if (parsed.data && typeof parsed.data === 'string') {
+                                        const innerParsed = JSON.parse(parsed.data);
+                                        if (innerParsed.segments && Array.isArray(innerParsed.segments)) {
+                                            // Format with timestamps
+                                            transcript = innerParsed.segments.map(seg => {
+                                                const time = formatTime(seg.start);
+                                                return `[${time}] ${seg.text.trim()}`;
+                                            }).join('\n\n');
+                                        } else if (innerParsed.text) {
+                                            transcript = innerParsed.text;
+                                        }
+                                    }
+                                } catch (parseErr) {
+                                    console.warn('Could not parse nested JSON:', parseErr);
+                                }
+                            }
+
+                            podcastTranscripts[index] = transcript;
+                            console.log('Transcription complete:', index);
+                        } catch (e) {
+                            throw new Error('Invalid response: ' + e.message);
+                        }
+                    } else {
+                        throw new Error('HTTP ' + xhr.status);
+                    }
+                    transcribingPodcasts.delete(index);
+                    renderPodcasts();
+                };
+                xhr.open('GET', url);
+                xhr.send();
+
+            } catch (error) {
+                console.error('Transcription error:', error);
+                transcribingPodcasts.delete(index);
+                alert('Failed to transcribe podcast: ' + error.message);
+                renderPodcasts();
+            }
         }
 
         // Find closest element with data-action
