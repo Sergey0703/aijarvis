@@ -1496,6 +1496,8 @@
         let podcastTranscripts = {}; // store transcripts by index
         let podcastTranscriptSegments = {}; // store parsed segments with timestamps
         let transcribingPodcasts = new Set(); // track which podcasts are being transcribed
+        let autoScrollEnabled = {}; // track auto-scroll state per podcast
+        let userScrollTimeout = null; // timeout for detecting user scroll
         let quizDistractors = []; // All words for distractors
         let quizCurrentTab = 'activeRecall'; // 'activeRecall' or 'scheduled'
         let quizCurrentIndex = 0;
@@ -3580,8 +3582,11 @@
                                 // If we have segments with timestamps, render them separately for highlighting
                                 if (segments && segments.length > 0 && isPlaying) {
                                     const currentTime = currentPodcastAudio ? currentPodcastAudio.currentTime : 0;
-                                    return `<div style="margin-top: 12px;">
-                                        <div id="transcript-${index}" style="padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; max-height: 300px; overflow-y: auto; font-size: 14px; line-height: 1.6;">
+                                    const autoScrollActive = autoScrollEnabled[index] !== false;
+                                    return `<div style="margin-top: 12px; position: relative;">
+                                        <div id="transcript-${index}"
+                                             style="padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; max-height: 300px; overflow-y: auto; font-size: 14px; line-height: 1.6; scroll-behavior: smooth;"
+                                             onscroll="handleTranscriptScroll(${index})">
                                             ${segments.map((seg, segIndex) => {
                                                 const isActive = currentTime >= seg.start && currentTime < seg.end;
                                                 const time = formatTime(seg.start);
@@ -3676,6 +3681,11 @@
                 currentPodcastAudio.preload = 'metadata';
 
                 currentPlayingPodcast = index;
+                currentPodcastIndex = index;
+
+                // Enable auto-scroll by default for this podcast
+                autoScrollEnabled[index] = true;
+
                 renderPodcasts();
 
                 // Use audio proxy to avoid redirect issues on mobile
@@ -3795,6 +3805,9 @@
         function scrollToActiveTranscriptSegment() {
             if (!currentPodcastAudio || currentPodcastIndex === null) return;
 
+            // Check if auto-scroll is enabled for this podcast
+            if (autoScrollEnabled[currentPodcastIndex] === false) return;
+
             const segments = podcastTranscriptSegments[currentPodcastIndex];
             if (!segments || segments.length === 0) return;
 
@@ -3813,10 +3826,27 @@
 
                     // Check if element is not fully visible
                     if (elementRect.top < containerRect.top || elementRect.bottom > containerRect.bottom) {
-                        activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Scroll within container, not the whole page
+                        const scrollTop = activeElement.offsetTop - container.offsetTop - (container.clientHeight / 2) + (activeElement.clientHeight / 2);
+                        container.scrollTop = scrollTop;
                     }
                 }
             }
+        }
+
+        function handleTranscriptScroll(index) {
+            // User scrolled manually - disable auto-scroll temporarily
+            autoScrollEnabled[index] = false;
+
+            // Clear existing timeout
+            if (userScrollTimeout) {
+                clearTimeout(userScrollTimeout);
+            }
+
+            // Re-enable auto-scroll after 3 seconds of no scrolling
+            userScrollTimeout = setTimeout(() => {
+                autoScrollEnabled[index] = true;
+            }, 3000);
         }
 
         function stopPodcastProgressUpdate() {
