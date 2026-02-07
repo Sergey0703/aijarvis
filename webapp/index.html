@@ -1494,6 +1494,7 @@
         let currentPlayingPodcast = null; // index of playing podcast
         let expandedPodcastDescriptions = new Set(); // track expanded descriptions
         let podcastTranscripts = {}; // store transcripts by index
+        let podcastTranscriptSegments = {}; // store parsed segments with timestamps
         let transcribingPodcasts = new Set(); // track which podcasts are being transcribed
         let quizDistractors = []; // All words for distractors
         let quizCurrentTab = 'activeRecall'; // 'activeRecall' or 'scheduled'
@@ -3569,17 +3570,36 @@
                         ${(() => {
                             const isTranscribing = transcribingPodcasts.has(index);
                             const hasTranscript = podcastTranscripts[index];
+                            const segments = podcastTranscriptSegments[index];
 
                             if (isTranscribing) {
                                 return `<div style="padding: 12px; text-align: center; color: var(--tg-theme-hint-color);">
                                     ⏳ Transcribing... This may take 3-5 minutes
                                 </div>`;
                             } else if (hasTranscript) {
-                                return `<div style="margin-top: 12px;">
-                                    <div style="padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-size: 14px; line-height: 1.6;">
-                                        ${hasTranscript}
-                                    </div>
-                                </div>`;
+                                // If we have segments with timestamps, render them separately for highlighting
+                                if (segments && segments.length > 0 && isPlaying) {
+                                    const currentTime = currentPodcastAudio ? currentPodcastAudio.currentTime : 0;
+                                    return `<div style="margin-top: 12px;">
+                                        <div id="transcript-${index}" style="padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; max-height: 300px; overflow-y: auto; font-size: 14px; line-height: 1.6;">
+                                            ${segments.map((seg, segIndex) => {
+                                                const isActive = currentTime >= seg.start && currentTime < seg.end;
+                                                const time = formatTime(seg.start);
+                                                return `<div id="segment-${index}-${segIndex}" style="padding: 4px 0; transition: all 0.3s; ${isActive ? 'background: rgba(0,123,255,0.15); border-radius: 4px; padding: 8px; margin: 4px -8px;' : ''}">
+                                                    <span style="color: var(--tg-theme-hint-color); font-size: 12px; margin-right: 8px;">[${time}]</span>
+                                                    <span>${seg.text.trim()}</span>
+                                                </div>`;
+                                            }).join('')}
+                                        </div>
+                                    </div>`;
+                                } else {
+                                    // Fallback to plain text display
+                                    return `<div style="margin-top: 12px;">
+                                        <div style="padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-size: 14px; line-height: 1.6;">
+                                            ${hasTranscript}
+                                        </div>
+                                    </div>`;
+                                }
                             } else {
                                 return `<button class="podcast-show-description-btn"
                                         data-action="transcribe-podcast"
@@ -3766,8 +3786,37 @@
             podcastProgressInterval = setInterval(() => {
                 if (currentPodcastAudio && !currentPodcastAudio.paused) {
                     renderPodcasts();
+                    // Auto-scroll to active segment
+                    scrollToActiveTranscriptSegment();
                 }
             }, 500);
+        }
+
+        function scrollToActiveTranscriptSegment() {
+            if (!currentPodcastAudio || currentPodcastIndex === null) return;
+
+            const segments = podcastTranscriptSegments[currentPodcastIndex];
+            if (!segments || segments.length === 0) return;
+
+            const currentTime = currentPodcastAudio.currentTime;
+            const activeSegmentIndex = segments.findIndex(seg =>
+                currentTime >= seg.start && currentTime < seg.end
+            );
+
+            if (activeSegmentIndex !== -1) {
+                const activeElement = document.getElementById(`segment-${currentPodcastIndex}-${activeSegmentIndex}`);
+                const container = document.getElementById(`transcript-${currentPodcastIndex}`);
+
+                if (activeElement && container) {
+                    const containerRect = container.getBoundingClientRect();
+                    const elementRect = activeElement.getBoundingClientRect();
+
+                    // Check if element is not fully visible
+                    if (elementRect.top < containerRect.top || elementRect.bottom > containerRect.bottom) {
+                        activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            }
         }
 
         function stopPodcastProgressUpdate() {
@@ -3811,6 +3860,7 @@
                             let transcript = data.transcript || 'No transcript available';
 
                             // Parse nested JSON if it's a string
+                            let segments = [];
                             if (typeof transcript === 'string' && transcript.startsWith('{')) {
                                 try {
                                     // Parse double-escaped JSON: {"data": "{...}"}
@@ -3818,8 +3868,9 @@
                                     if (parsed.data && typeof parsed.data === 'string') {
                                         const innerParsed = JSON.parse(parsed.data);
                                         if (innerParsed.segments && Array.isArray(innerParsed.segments)) {
+                                            segments = innerParsed.segments;
                                             // Format with timestamps
-                                            transcript = innerParsed.segments.map(seg => {
+                                            transcript = segments.map(seg => {
                                                 const time = formatTime(seg.start);
                                                 return `[${time}] ${seg.text.trim()}`;
                                             }).join('\n\n');
@@ -3833,7 +3884,8 @@
                             }
 
                             podcastTranscripts[index] = transcript;
-                            console.log('Transcription complete:', index);
+                            podcastTranscriptSegments[index] = segments;
+                            console.log('Transcription complete:', index, 'segments:', segments.length);
                         } catch (e) {
                             throw new Error('Invalid response: ' + e.message);
                         }
