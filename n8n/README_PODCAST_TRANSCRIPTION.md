@@ -82,11 +82,41 @@
    - Split into two parallel paths from "Get Audio URL"
    - Both paths converge at "Respond to Webhook"
 
-### Known Issues:
-1. **Check Transcripts Workflow** (DxnyDCVptGINm9tP) - Created but not active
-   - Intended to check multiple podcasts for cached transcripts
-   - Frontend prepared to use it but endpoint not working yet
-   - Workaround: Always ask for confirmation before transcription
+### Additional Workflow: API - Check Podcast Transcripts
+**File:** `API_-_Check_Podcast_Transcripts.json`
+**Webhook URL:** `https://n8n.aimediaflow.net/webhook/check-transcripts`
+**Status:** ✅ Active (activated 2026-02-07 20:06)
+
+#### Purpose:
+Bulk check which podcasts already have cached transcriptions.
+
+#### Usage:
+```bash
+# Check multiple podcasts at once
+curl "https://n8n.aimediaflow.net/webhook/check-transcripts?urls=url1,url2,url3"
+
+# Response:
+{
+  "url1": true,   // has transcript
+  "url2": true,
+  "url3": false   // no transcript (will be omitted from response)
+}
+```
+
+#### Technical Details:
+- **Nodes:** 5 total
+  - Webhook (typeVersion 1)
+  - Get Audio URLs (Code) - splits comma-separated URLs
+  - Check Each URL (DataTable rowExists)
+  - Format Results (Code) - aggregates results
+  - Respond to Webhook
+
+- **Performance:** ~50-100ms per request (regardless of number of URLs)
+
+#### Frontend Integration:
+- Function `checkPodcastTranscripts()` prepared in index.html
+- Currently frontend always asks for confirmation
+- Can be enabled in future to show visual indicators for cached podcasts
 
 ### Migration Notes:
 - Old workflow "API - Transcribe Podcast" (T4amaL9X8Z9vZG7Q) is archived

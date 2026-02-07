@@ -1,0 +1,141 @@
+{
+  "name": "API - Check Podcast Transcripts",
+  "nodes": [
+    {
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [256, 300],
+      "parameters": {
+        "path": "check-transcripts",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "webhookId": "check-transcripts",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "code-1",
+      "name": "Get Audio URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300],
+      "parameters": {
+        "jsCode": "const urls = $input.first().json.query?.urls;\nif (!urls) {\n  return [{ json: {} }];\n}\n\nconst urlArray = urls.split(',');\nreturn urlArray.map(url => ({ json: { audioUrl: url.trim() } }));"
+      }
+    },
+    {
+      "id": "check-each",
+      "name": "Check Each URL",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [700, 300],
+      "parameters": {
+        "operation": "rowExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "w8Wf2jE8RjoI2FkO",
+          "mode": "list",
+          "cachedResultName": "podcast_transcripts"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "audio_url",
+              "keyValue": "={{ $json.audioUrl }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "code-2",
+      "name": "Format Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const results = {};\nfor (const item of $input.all()) {\n  if (item.json.audioUrl) {\n    results[item.json.audioUrl] = true;\n  }\n}\nreturn [{ json: results }];"
+      }
+    },
+    {
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1140, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-cache, no-store, must-revalidate"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Audio URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Audio URLs": {
+      "main": [
+        [
+          {
+            "node": "Check Each URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Each URL": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Results": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
