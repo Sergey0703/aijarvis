@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  ffmpeg-compressor:
+    build: .
+    container_name: ffmpeg-audio-compressor
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - aijarvis_default
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  aijarvis_default:
+    external: true
