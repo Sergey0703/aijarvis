@@ -3728,7 +3728,7 @@
                 // Enable auto-scroll by default for this podcast
                 autoScrollEnabled[index] = true;
 
-                renderPodcasts();
+                // DON'T render here - will render after play() succeeds
 
                 // Use audio proxy to avoid redirect issues on mobile
                 const proxiedUrl = AUDIO_PROXY_URL + '?url=' + encodeURIComponent(audioUrl);
@@ -3766,6 +3766,7 @@
                 currentPodcastAudio.play()
                     .then(() => {
                         console.log('Podcast playing:', audioUrl);
+                        renderPodcasts(); // Re-render to show player controls
                         startPodcastProgressUpdate();
                     })
                     .catch(error => {
@@ -3855,16 +3856,38 @@
             if (!currentPodcastAudio || currentPodcastIndex === null) return;
 
             // Update progress bar only
-            const progressBar = document.querySelector(`[data-index="${currentPodcastIndex}"] .podcast-progress-bar`);
+            const progressContainer = document.querySelector(`[data-index="${currentPodcastIndex}"][data-action="seek-podcast"]`);
+            if (!progressContainer) {
+                console.log('[PROGRESS] Progress container not found for index:', currentPodcastIndex);
+                return;
+            }
+
+            const progressBar = progressContainer.querySelector('.podcast-progress-bar');
             if (progressBar) {
                 const percent = (currentPodcastAudio.currentTime / currentPodcastAudio.duration) * 100;
                 progressBar.style.width = percent + '%';
+            } else {
+                console.log('[PROGRESS] Progress bar not found');
             }
 
-            // Update time display
-            const timeDisplay = document.querySelector(`[data-index="${currentPodcastIndex}"] .podcast-time`);
-            if (timeDisplay) {
-                timeDisplay.textContent = formatTime(currentPodcastAudio.currentTime) + ' / ' + formatTime(currentPodcastAudio.duration);
+            // Update time display (two spans: current and total)
+            // .podcast-time is a sibling of .podcast-progress-container inside .podcast-player
+            const playerDiv = progressContainer.parentElement;
+            if (playerDiv) {
+                const timeDisplay = playerDiv.querySelector('.podcast-time');
+                if (timeDisplay) {
+                    const spans = timeDisplay.querySelectorAll('span');
+                    if (spans.length >= 2) {
+                        spans[0].textContent = formatTime(currentPodcastAudio.currentTime);
+                        spans[1].textContent = formatTime(currentPodcastAudio.duration);
+                    } else {
+                        console.log('[PROGRESS] Not enough time spans:', spans.length);
+                    }
+                } else {
+                    console.log('[PROGRESS] Time display not found');
+                }
+            } else {
+                console.log('[PROGRESS] Player div not found');
             }
         }
 
