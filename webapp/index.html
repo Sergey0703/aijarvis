@@ -1453,6 +1453,7 @@
         const PODCASTS_API_URL = 'https://n8n.aimediaflow.net/webhook/voa-podcasts';
         const AUDIO_PROXY_URL = 'https://n8n.aimediaflow.net/webhook/audio-proxy';
         const TRANSCRIBE_API_URL = 'https://n8n.aimediaflow.net/webhook/transcribe-podcast';
+        const CHECK_TRANSCRIPTS_API_URL = 'https://n8n.aimediaflow.net/webhook/check-transcripts';
 
         // State
         let dateGroups = [];
@@ -1463,6 +1464,7 @@
         let activeGroupDate = null; // date of group with active autoplay
         let currentTab = 'grouped'; // 'grouped' or 'random'
         let currentPage = 'home'; // 'home', 'words', 'digest', 'dictionary', 'quiz'
+        let podcastTranscripts = {}; // cache of available transcripts
 
         // Pagination state
         let currentPageNum = 1;
@@ -1493,7 +1495,6 @@
         let currentPodcastAudio = null;
         let currentPlayingPodcast = null; // index of playing podcast
         let expandedPodcastDescriptions = new Set(); // track expanded descriptions
-        let podcastTranscripts = {}; // store transcripts by index
         let podcastTranscriptSegments = {}; // store parsed segments with timestamps
         let transcribingPodcasts = new Set(); // track which podcasts are being transcribed
         let autoScrollEnabled = {}; // track auto-scroll state per podcast
@@ -3465,6 +3466,23 @@
         }
 
         // Podcasts functions
+        async function checkPodcastTranscripts() {
+            if (podcastEpisodes.length === 0) return;
+
+            const audioUrls = podcastEpisodes.map(ep => ep.audioUrl).join(',');
+            const url = CHECK_TRANSCRIPTS_API_URL + '?urls=' + encodeURIComponent(audioUrls);
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                podcastTranscripts = data;
+                console.log('Transcript availability:', data);
+            } catch (error) {
+                console.error('Error checking transcripts:', error);
+                podcastTranscripts = {};
+            }
+        }
+
         async function loadPodcasts() {
             if (isLoading) return;
             isLoading = true;
@@ -3509,6 +3527,9 @@
                     content.innerHTML = '<div class="loading">No podcasts available</div>';
                     return;
                 }
+
+                // Check which podcasts have transcripts
+                await checkPodcastTranscripts();
 
                 renderPodcasts();
 
@@ -3571,6 +3592,7 @@
 
                         ${(() => {
                             const isTranscribing = transcribingPodcasts.has(index);
+                            const hasTranscriptInCache = podcastTranscripts[episode.audioUrl];
                             const hasTranscript = podcastTranscripts[index];
                             const segments = podcastTranscriptSegments[index];
 
@@ -3606,12 +3628,17 @@
                                     </div>`;
                                 }
                             } else {
+                                const btnStyle = hasTranscriptInCache
+                                    ? 'margin-top: 8px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: 2px solid #667eea;'
+                                    : 'margin-top: 8px;';
+                                const btnIcon = hasTranscriptInCache ? '✅' : '📝';
+                                const btnText = hasTranscriptInCache ? 'Show Transcript (Cached)' : 'Show Full Transcript';
                                 return `<button class="podcast-show-description-btn"
                                         data-action="transcribe-podcast"
                                         data-index="${index}"
                                         data-url="${episode.audioUrl}"
-                                        style="margin-top: 8px;">
-                                    📝 Show Full Transcript
+                                        style="${btnStyle}">
+                                    ${btnIcon} ${btnText}
                                 </button>`;
                             }
                         })()}
@@ -3867,6 +3894,17 @@
 
         async function transcribePodcast(index, audioUrl) {
             if (transcribingPodcasts.has(index) || podcastTranscripts[index]) return;
+
+            // Check if transcript already exists in cache
+            const hasTranscriptInCache = podcastTranscripts[audioUrl];
+
+            if (!hasTranscriptInCache) {
+                // Ask for confirmation before transcribing
+                const confirmed = confirm('Start transcription? This may take 3-5 minutes and will use server resources.');
+                if (!confirmed) {
+                    return;
+                }
+            }
 
             transcribingPodcasts.add(index);
             renderPodcasts();
