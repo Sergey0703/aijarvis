@@ -3858,6 +3858,12 @@
                         try {
                             const data = JSON.parse(xhr.responseText);
                             let transcript = data.transcript || 'No transcript available';
+                            const fileSizeMB = data.fileSizeMB;
+
+                            // Log file size for debugging
+                            if (fileSizeMB) {
+                                console.log(`Audio file size: ${fileSizeMB} MB`);
+                            }
 
                             // Parse nested JSON if it's a string
                             let segments = [];
@@ -3885,7 +3891,7 @@
 
                             podcastTranscripts[index] = transcript;
                             podcastTranscriptSegments[index] = segments;
-                            console.log('Transcription complete:', index, 'segments:', segments.length);
+                            console.log('Transcription complete:', index, 'segments:', segments.length, 'file size:', fileSizeMB, 'MB');
                         } catch (e) {
                             throw new Error('Invalid response: ' + e.message);
                         }
