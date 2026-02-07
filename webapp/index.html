@@ -148,6 +148,19 @@
             background: var(--tg-theme-secondary-bg-color);
         }
 
+        /* Transcript segment styles */
+        .transcript-segment {
+            padding: 4px 0;
+            transition: background 0.2s ease, padding 0.2s ease, margin 0.2s ease;
+        }
+
+        .transcript-segment.active {
+            background: rgba(0,123,255,0.15);
+            border-radius: 4px;
+            padding: 8px;
+            margin: 4px -8px;
+        }
+
         .menu-item.active {
             background: var(--tg-theme-button-color);
             color: var(--tg-theme-button-text-color);
@@ -3607,12 +3620,14 @@
                                     const autoScrollActive = autoScrollEnabled[index] !== false;
                                     return `<div style="margin-top: 12px; position: relative;">
                                         <div id="transcript-${index}"
-                                             style="padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; max-height: 300px; overflow-y: auto; font-size: 14px; line-height: 1.6; scroll-behavior: smooth;"
+                                             style="padding: 12px; background: rgba(0,0,0,0.05); border-radius: 8px; max-height: 300px; overflow-y: auto; font-size: 14px; line-height: 1.6;"
                                              onscroll="handleTranscriptScroll(${index})">
                                             ${segments.map((seg, segIndex) => {
                                                 const isActive = currentTime >= seg.start && currentTime < seg.end;
                                                 const time = formatTime(seg.start);
-                                                return `<div id="segment-${index}-${segIndex}" style="padding: 4px 0; transition: all 0.3s; ${isActive ? 'background: rgba(0,123,255,0.15); border-radius: 4px; padding: 8px; margin: 4px -8px;' : ''}">
+                                                return `<div id="segment-${index}-${segIndex}"
+                                                         class="transcript-segment ${isActive ? 'active' : ''}"
+                                                         style="padding: 4px 0; transition: background 0.2s ease, padding 0.2s ease;">
                                                     <span style="color: var(--tg-theme-hint-color); font-size: 12px; margin-right: 8px;">[${time}]</span>
                                                     <span>${seg.text.trim()}</span>
                                                 </div>`;
@@ -3822,17 +3837,66 @@
             }
             podcastProgressInterval = setInterval(() => {
                 if (currentPodcastAudio && !currentPodcastAudio.paused) {
-                    renderPodcasts();
+                    // Update only progress bar, NOT full re-render
+                    updatePodcastProgress();
+                    // Update active segment class (without re-rendering)
+                    updateActiveTranscriptSegment();
                     // Auto-scroll to active segment
                     scrollToActiveTranscriptSegment();
                 }
-            }, 500);
+            }, 200);
+        }
+
+        let lastScrolledSegment = null; // Track last scrolled segment
+        let lastTargetScroll = null; // Track last target scroll position
+        let isProgrammaticScroll = false; // Flag to ignore programmatic scrolls
+
+        function updatePodcastProgress() {
+            if (!currentPodcastAudio || currentPodcastIndex === null) return;
+
+            // Update progress bar only
+            const progressBar = document.querySelector(`[data-index="${currentPodcastIndex}"] .podcast-progress-bar`);
+            if (progressBar) {
+                const percent = (currentPodcastAudio.currentTime / currentPodcastAudio.duration) * 100;
+                progressBar.style.width = percent + '%';
+            }
+
+            // Update time display
+            const timeDisplay = document.querySelector(`[data-index="${currentPodcastIndex}"] .podcast-time`);
+            if (timeDisplay) {
+                timeDisplay.textContent = formatTime(currentPodcastAudio.currentTime) + ' / ' + formatTime(currentPodcastAudio.duration);
+            }
+        }
+
+        function updateActiveTranscriptSegment() {
+            if (!currentPodcastAudio || currentPodcastIndex === null) return;
+
+            const segments = podcastTranscriptSegments[currentPodcastIndex];
+            if (!segments || segments.length === 0) return;
+
+            const currentTime = currentPodcastAudio.currentTime;
+            const activeSegmentIndex = segments.findIndex(seg =>
+                currentTime >= seg.start && currentTime < seg.end
+            );
+
+            // Remove active class from all segments
+            const container = document.getElementById(`transcript-${currentPodcastIndex}`);
+            if (!container) return;
+
+            const allSegments = container.querySelectorAll('.transcript-segment');
+            allSegments.forEach(seg => seg.classList.remove('active'));
+
+            // Add active class to current segment
+            if (activeSegmentIndex !== -1) {
+                const activeElement = document.getElementById(`segment-${currentPodcastIndex}-${activeSegmentIndex}`);
+                if (activeElement) {
+                    activeElement.classList.add('active');
+                }
+            }
         }
 
         function scrollToActiveTranscriptSegment() {
             if (!currentPodcastAudio || currentPodcastIndex === null) return;
-
-            // Check if auto-scroll is enabled for this podcast
             if (autoScrollEnabled[currentPodcastIndex] === false) return;
 
             const segments = podcastTranscriptSegments[currentPodcastIndex];
@@ -3844,24 +3908,54 @@
             );
 
             if (activeSegmentIndex !== -1) {
+                if (lastScrolledSegment === activeSegmentIndex) return;
+                lastScrolledSegment = activeSegmentIndex;
+
                 const activeElement = document.getElementById(`segment-${currentPodcastIndex}-${activeSegmentIndex}`);
                 const container = document.getElementById(`transcript-${currentPodcastIndex}`);
 
                 if (activeElement && container) {
-                    const containerRect = container.getBoundingClientRect();
-                    const elementRect = activeElement.getBoundingClientRect();
+                    const elementTop = activeElement.offsetTop;
+                    const elementHeight = activeElement.clientHeight;
+                    const containerHeight = container.clientHeight;
+                    const currentScroll = container.scrollTop;
 
-                    // Check if element is not fully visible
-                    if (elementRect.top < containerRect.top || elementRect.bottom > containerRect.bottom) {
-                        // Scroll within container, not the whole page
-                        const scrollTop = activeElement.offsetTop - container.offsetTop - (container.clientHeight / 2) + (activeElement.clientHeight / 2);
-                        container.scrollTop = scrollTop;
+                    // Calculate where element center should be (center of viewport)
+                    const elementCenter = elementTop + (elementHeight / 2);
+                    const targetScroll = elementCenter - (containerHeight / 2);
+
+                    // Clamp to valid range
+                    const newScroll = Math.max(0, targetScroll);
+
+                    console.log('[SCROLL] elemTop:', elementTop, 'center:', elementCenter, 'targetScroll:', targetScroll, 'newScroll:', newScroll, 'current:', currentScroll, 'lastTarget:', lastTargetScroll);
+
+                    // Only scroll if target changed (avoid re-scrolling same position)
+                    if (lastTargetScroll !== null && Math.abs(newScroll - lastTargetScroll) < 2) {
+                        console.log('[SCROLL] Already scrolling to this target');
+                        return;
                     }
+
+                    console.log('[SCROLL] Centering element. Scrolling to:', newScroll);
+
+                    lastTargetScroll = newScroll;
+                    isProgrammaticScroll = true;
+
+                    // Direct scroll (no animation for testing)
+                    container.scrollTop = newScroll;
+
+                    console.log('[SCROLL] After scroll, container.scrollTop:', container.scrollTop);
+
+                    setTimeout(() => {
+                        isProgrammaticScroll = false;
+                    }, 100);
                 }
             }
         }
 
         function handleTranscriptScroll(index) {
+            // Ignore programmatic scrolls
+            if (isProgrammaticScroll) return;
+
             // User scrolled manually - disable auto-scroll temporarily
             autoScrollEnabled[index] = false;
 
