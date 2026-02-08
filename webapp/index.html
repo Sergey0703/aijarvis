@@ -90,6 +90,22 @@
             transform: rotate(-45deg) translate(4px, -4px);
         }
 
+        .back-btn {
+            background: var(--tg-theme-secondary-bg-color);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--tg-theme-text-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .back-btn:active {
+            opacity: 0.7;
+        }
+
         .menu-overlay {
             position: fixed;
             top: 0;
@@ -1456,6 +1472,49 @@
         <button class="refresh-btn" id="podcastsRefreshBtn" data-action="refresh-podcasts">&#x21bb;</button>
     </div>
 
+    <!-- Podcast Player Page -->
+    <div class="page" id="podcastPlayerPage">
+        <div class="header">
+            <div class="header-left">
+                <button class="back-btn" data-action="back-to-podcasts">
+                    ← Back
+                </button>
+                <h1 id="playerPodcastTitle">Podcast</h1>
+            </div>
+        </div>
+
+        <div id="podcastPlayerContent" style="padding: 16px;">
+            <!-- Transcript container -->
+            <div id="playerTranscript" style="background: rgba(0,0,0,0.05); border-radius: 12px; padding: 16px; height: 60vh; overflow-y: auto; margin-bottom: 20px;">
+                <div style="text-align: center; color: var(--tg-theme-hint-color);">
+                    Loading transcript...
+                </div>
+            </div>
+
+            <!-- Player controls -->
+            <div class="podcast-player" id="playerControls">
+                <div class="podcast-progress-container" data-action="seek-player" id="playerProgress">
+                    <div class="podcast-progress-bar" id="playerProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="podcast-time">
+                    <span id="playerCurrentTime">0:00</span>
+                    <span id="playerTotalTime">0:00</span>
+                </div>
+                <div class="podcast-controls">
+                    <button class="podcast-control-btn" data-action="player-rewind">
+                        ⏪
+                    </button>
+                    <button class="podcast-control-btn" data-action="player-play-pause" id="playerPlayPauseBtn">
+                        ⏸
+                    </button>
+                    <button class="podcast-control-btn" data-action="player-forward">
+                        ⏩
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_URL = 'https://n8n.aimediaflow.net/webhook/words-repeat';
         const DIGEST_API_URL = 'https://n8n.aimediaflow.net/webhook/get-digests';
@@ -2415,7 +2474,7 @@
             } else if (action === 'play-podcast') {
                 const index = parseInt(target.getAttribute('data-index'));
                 const url = target.getAttribute('data-url');
-                playPodcast(index, url);
+                openPodcastPlayer(index, url);
                 return true;
             } else if (action === 'rewind-podcast') {
                 const index = parseInt(target.getAttribute('data-index'));
@@ -2441,6 +2500,21 @@
                 const index = parseInt(target.getAttribute('data-index'));
                 const url = target.getAttribute('data-url');
                 transcribePodcast(index, url);
+                return true;
+            } else if (action === 'back-to-podcasts') {
+                closePodcastPlayer();
+                return true;
+            } else if (action === 'player-play-pause') {
+                togglePlayerPlayPause();
+                return true;
+            } else if (action === 'player-rewind') {
+                rewindPodcast(15);
+                return true;
+            } else if (action === 'player-forward') {
+                forwardPodcast(15);
+                return true;
+            } else if (action === 'seek-player') {
+                seekPlayerPodcast(target, event);
                 return true;
             }
             return false;
@@ -3799,6 +3873,240 @@
             currentPlayingPodcast = null;
         }
 
+        // New dedicated player screen functions
+        async function openPodcastPlayer(index, audioUrl) {
+            // Stop any currently playing podcast
+            if (currentPodcastAudio) {
+                currentPodcastAudio.pause();
+                stopPodcastProgressUpdate();
+            }
+
+            // Switch to player page
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('podcastPlayerPage').classList.add('active');
+
+            // Set up player
+            const episode = podcastEpisodes[index];
+            document.getElementById('playerPodcastTitle').textContent = episode.title;
+
+            currentPodcastIndex = index;
+            currentPlayingPodcast = index;
+            autoScrollEnabled[index] = true;
+
+            // Load transcript if we only have the flag (true) but not the actual data
+            const transcriptValue = podcastTranscripts[index] || podcastTranscripts[episode.audioUrl];
+            if (transcriptValue === true) {
+                // We know transcript exists but haven't loaded it yet
+                await loadFullTranscript(index, episode.audioUrl);
+            }
+
+            // Render transcript
+            renderPlayerTranscript();
+
+            // Set up audio
+            currentPodcastAudio = new Audio();
+            currentPodcastAudio.preload = 'metadata';
+
+            const proxiedUrl = AUDIO_PROXY_URL + '?url=' + encodeURIComponent(audioUrl);
+            currentPodcastAudio.src = proxiedUrl;
+            currentPodcastAudio.load();
+
+            currentPodcastAudio.onended = () => {
+                document.getElementById('playerPlayPauseBtn').textContent = '▶';
+                stopPodcastProgressUpdate();
+            };
+
+            currentPodcastAudio.onerror = (e) => {
+                console.error('Audio error:', audioUrl, e);
+                alert('Failed to load podcast audio. Error: ' + (currentPodcastAudio.error?.code || 'unknown'));
+            };
+
+            currentPodcastAudio.onloadedmetadata = () => {
+                const duration = currentPodcastAudio.duration || 0;
+                const minutes = Math.floor(duration / 60);
+                const seconds = Math.floor(duration % 60);
+                document.getElementById('playerTotalTime').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            };
+
+            // Auto-play
+            currentPodcastAudio.play()
+                .then(() => {
+                    document.getElementById('playerPlayPauseBtn').textContent = '⏸';
+                    startPodcastProgressUpdate();
+                })
+                .catch(error => {
+                    console.error('Error playing podcast:', error);
+                    alert('Failed to play podcast. Browser may have blocked autoplay.');
+                });
+        }
+
+        function closePodcastPlayer() {
+            // Stop audio and progress updates
+            if (currentPodcastAudio) {
+                currentPodcastAudio.pause();
+                currentPodcastAudio = null;
+            }
+            stopPodcastProgressUpdate();
+            currentPlayingPodcast = null;
+            currentPodcastIndex = null;
+
+            // Switch back to podcasts page manually (avoid navigateToPage which might have side effects)
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('podcastsPage').classList.add('active');
+
+            // Update currentPage variable
+            currentPage = 'podcasts';
+        }
+
+        function togglePlayerPlayPause() {
+            if (!currentPodcastAudio) return;
+
+            if (currentPodcastAudio.paused) {
+                currentPodcastAudio.play()
+                    .then(() => {
+                        document.getElementById('playerPlayPauseBtn').textContent = '⏸';
+                        startPodcastProgressUpdate();
+                    })
+                    .catch(error => {
+                        console.error('Error playing:', error);
+                    });
+            } else {
+                currentPodcastAudio.pause();
+                document.getElementById('playerPlayPauseBtn').textContent = '▶';
+                stopPodcastProgressUpdate();
+            }
+        }
+
+        function seekPlayerPodcast(target, event) {
+            if (!currentPodcastAudio) return;
+
+            const rect = target.getBoundingClientRect();
+            const clickX = (event.clientX || event.touches?.[0]?.clientX) - rect.left;
+            const percent = clickX / rect.width;
+            const newTime = percent * (currentPodcastAudio.duration || 0);
+
+            currentPodcastAudio.currentTime = Math.max(0, Math.min(newTime, currentPodcastAudio.duration || 0));
+        }
+
+        async function loadFullTranscript(index, audioUrl) {
+            console.log('[PLAYER] Loading full transcript for:', audioUrl);
+            const url = TRANSCRIBE_API_URL + '?audioUrl=' + encodeURIComponent(audioUrl);
+
+            try {
+                const xhr = new XMLHttpRequest();
+                xhr.timeout = 60000; // 60 seconds
+                xhr.ontimeout = () => {
+                    throw new Error('Transcript load timeout');
+                };
+                xhr.onerror = () => {
+                    throw new Error('Network error');
+                };
+
+                const response = await new Promise((resolve, reject) => {
+                    xhr.onload = function() {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            try {
+                                resolve(JSON.parse(xhr.responseText));
+                            } catch (e) {
+                                reject(new Error('Invalid response: ' + e.message));
+                            }
+                        } else {
+                            reject(new Error('HTTP ' + xhr.status));
+                        }
+                    };
+                    xhr.open('GET', url);
+                    xhr.send();
+                });
+
+                let transcript = response.transcript || 'No transcript available';
+                let segments = [];
+
+                // Parse nested JSON if it's a string
+                if (typeof transcript === 'string' && transcript.startsWith('{')) {
+                    try {
+                        const parsed = JSON.parse(transcript);
+                        if (parsed.data && typeof parsed.data === 'string') {
+                            const innerParsed = JSON.parse(parsed.data);
+                            if (innerParsed.segments && Array.isArray(innerParsed.segments)) {
+                                segments = innerParsed.segments;
+                                // Format with timestamps
+                                transcript = segments.map(seg => {
+                                    const time = formatTime(seg.start);
+                                    return `[${time}] ${seg.text.trim()}`;
+                                }).join('\n\n');
+                            } else if (innerParsed.text) {
+                                transcript = innerParsed.text;
+                            }
+                        }
+                    } catch (parseErr) {
+                        console.warn('Could not parse nested JSON:', parseErr);
+                    }
+                }
+
+                podcastTranscripts[index] = transcript;
+                podcastTranscriptSegments[index] = segments;
+                console.log('[PLAYER] Transcript loaded:', segments.length, 'segments');
+
+            } catch (error) {
+                console.error('[PLAYER] Error loading transcript:', error);
+                // Don't throw - just keep the flag, user can still transcribe
+            }
+        }
+
+        function renderPlayerTranscript() {
+            const container = document.getElementById('playerTranscript');
+            const index = currentPodcastIndex;
+
+            if (index === null) {
+                container.innerHTML = '<div style="text-align: center; color: var(--tg-theme-hint-color);">No podcast selected</div>';
+                return;
+            }
+
+            const episode = podcastEpisodes[index];
+            const segments = podcastTranscriptSegments[index];
+
+            // Transcript can be stored by index OR by URL
+            const transcript = podcastTranscripts[index] || podcastTranscripts[episode.audioUrl];
+
+            console.log('[PLAYER] Rendering transcript for index:', index, 'has transcript:', !!transcript, 'segments:', segments?.length || 0);
+
+            if (!transcript) {
+                // Check if currently transcribing
+                const isTranscribing = transcribingPodcasts.has(index);
+                if (isTranscribing) {
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--tg-theme-hint-color);">⏳ Transcribing... This may take 3-5 minutes</div>';
+                } else {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 20px;">
+                            <div style="margin-bottom: 16px; color: var(--tg-theme-hint-color);">No transcript available</div>
+                            <button class="podcast-show-description-btn"
+                                    data-action="transcribe-podcast"
+                                    data-index="${index}"
+                                    data-url="${episode.audioUrl}">
+                                📝 Get Transcript
+                            </button>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            if (segments && segments.length > 0) {
+                const html = segments.map((seg, segIndex) => {
+                    const time = formatTime(seg.start);
+                    return `<div id="player-segment-${segIndex}"
+                             class="transcript-segment"
+                             style="padding: 8px 0; transition: background 0.2s ease, padding 0.2s ease;">
+                        <span style="color: var(--tg-theme-hint-color); font-size: 12px; margin-right: 8px; font-weight: 500;">[${time}]</span>
+                        <span style="line-height: 1.6;">${seg.text.trim()}</span>
+                    </div>`;
+                }).join('');
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = `<div style="white-space: pre-wrap; line-height: 1.6;">${transcript}</div>`;
+            }
+        }
+
         function rewindPodcast(seconds = 15) {
             if (currentPodcastAudio) {
                 currentPodcastAudio.currentTime = Math.max(0, currentPodcastAudio.currentTime - seconds);
@@ -3855,39 +4163,44 @@
         function updatePodcastProgress() {
             if (!currentPodcastAudio || currentPodcastIndex === null) return;
 
-            // Update progress bar only
-            const progressContainer = document.querySelector(`[data-index="${currentPodcastIndex}"][data-action="seek-podcast"]`);
-            if (!progressContainer) {
-                console.log('[PROGRESS] Progress container not found for index:', currentPodcastIndex);
-                return;
-            }
+            // Check if we're on the player page
+            const playerPage = document.getElementById('podcastPlayerPage');
+            const isOnPlayerPage = playerPage && playerPage.classList.contains('active');
 
-            const progressBar = progressContainer.querySelector('.podcast-progress-bar');
-            if (progressBar) {
-                const percent = (currentPodcastAudio.currentTime / currentPodcastAudio.duration) * 100;
-                progressBar.style.width = percent + '%';
-            } else {
-                console.log('[PROGRESS] Progress bar not found');
-            }
+            if (isOnPlayerPage) {
+                // Update player page UI
+                const progressBar = document.getElementById('playerProgressBar');
+                if (progressBar) {
+                    const percent = (currentPodcastAudio.currentTime / currentPodcastAudio.duration) * 100;
+                    progressBar.style.width = percent + '%';
+                }
 
-            // Update time display (two spans: current and total)
-            // .podcast-time is a sibling of .podcast-progress-container inside .podcast-player
-            const playerDiv = progressContainer.parentElement;
-            if (playerDiv) {
-                const timeDisplay = playerDiv.querySelector('.podcast-time');
-                if (timeDisplay) {
-                    const spans = timeDisplay.querySelectorAll('span');
-                    if (spans.length >= 2) {
-                        spans[0].textContent = formatTime(currentPodcastAudio.currentTime);
-                        spans[1].textContent = formatTime(currentPodcastAudio.duration);
-                    } else {
-                        console.log('[PROGRESS] Not enough time spans:', spans.length);
-                    }
-                } else {
-                    console.log('[PROGRESS] Time display not found');
+                const currentTimeSpan = document.getElementById('playerCurrentTime');
+                if (currentTimeSpan) {
+                    currentTimeSpan.textContent = formatTime(currentPodcastAudio.currentTime);
                 }
             } else {
-                console.log('[PROGRESS] Player div not found');
+                // Update old podcasts list UI (if still needed)
+                const progressContainer = document.querySelector(`[data-index="${currentPodcastIndex}"][data-action="seek-podcast"]`);
+                if (progressContainer) {
+                    const progressBar = progressContainer.querySelector('.podcast-progress-bar');
+                    if (progressBar) {
+                        const percent = (currentPodcastAudio.currentTime / currentPodcastAudio.duration) * 100;
+                        progressBar.style.width = percent + '%';
+                    }
+
+                    const playerDiv = progressContainer.parentElement;
+                    if (playerDiv) {
+                        const timeDisplay = playerDiv.querySelector('.podcast-time');
+                        if (timeDisplay) {
+                            const spans = timeDisplay.querySelectorAll('span');
+                            if (spans.length >= 2) {
+                                spans[0].textContent = formatTime(currentPodcastAudio.currentTime);
+                                spans[1].textContent = formatTime(currentPodcastAudio.duration);
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -3902,16 +4215,31 @@
                 currentTime >= seg.start && currentTime < seg.end
             );
 
-            // Remove active class from all segments
-            const container = document.getElementById(`transcript-${currentPodcastIndex}`);
+            // Check if we're on player page
+            const playerPage = document.getElementById('podcastPlayerPage');
+            const isOnPlayerPage = playerPage && playerPage.classList.contains('active');
+
+            let container;
+            if (isOnPlayerPage) {
+                container = document.getElementById('playerTranscript');
+            } else {
+                container = document.getElementById(`transcript-${currentPodcastIndex}`);
+            }
+
             if (!container) return;
 
+            // Remove active class from all segments
             const allSegments = container.querySelectorAll('.transcript-segment');
             allSegments.forEach(seg => seg.classList.remove('active'));
 
             // Add active class to current segment
             if (activeSegmentIndex !== -1) {
-                const activeElement = document.getElementById(`segment-${currentPodcastIndex}-${activeSegmentIndex}`);
+                let activeElement;
+                if (isOnPlayerPage) {
+                    activeElement = document.getElementById(`player-segment-${activeSegmentIndex}`);
+                } else {
+                    activeElement = document.getElementById(`segment-${currentPodcastIndex}-${activeSegmentIndex}`);
+                }
                 if (activeElement) {
                     activeElement.classList.add('active');
                 }
@@ -3934,8 +4262,18 @@
                 if (lastScrolledSegment === activeSegmentIndex) return;
                 lastScrolledSegment = activeSegmentIndex;
 
-                const activeElement = document.getElementById(`segment-${currentPodcastIndex}-${activeSegmentIndex}`);
-                const container = document.getElementById(`transcript-${currentPodcastIndex}`);
+                // Check if we're on player page
+                const playerPage = document.getElementById('podcastPlayerPage');
+                const isOnPlayerPage = playerPage && playerPage.classList.contains('active');
+
+                let activeElement, container;
+                if (isOnPlayerPage) {
+                    activeElement = document.getElementById(`player-segment-${activeSegmentIndex}`);
+                    container = document.getElementById('playerTranscript');
+                } else {
+                    activeElement = document.getElementById(`segment-${currentPodcastIndex}-${activeSegmentIndex}`);
+                    container = document.getElementById(`transcript-${currentPodcastIndex}`);
+                }
 
                 if (activeElement && container) {
                     const elementTop = activeElement.offsetTop;
@@ -4085,6 +4423,11 @@
                     }
                     transcribingPodcasts.delete(index);
                     renderPodcasts();
+                    // Also update player page if it's open
+                    const playerPage = document.getElementById('podcastPlayerPage');
+                    if (playerPage && playerPage.classList.contains('active') && currentPodcastIndex === index) {
+                        renderPlayerTranscript();
+                    }
                 };
                 xhr.open('GET', url);
                 xhr.send();
