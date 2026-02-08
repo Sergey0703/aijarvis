@@ -4304,11 +4304,17 @@
                     scrollToActiveTranscriptSegment();
                 }
             }, 200);
+
+            // Start timestamp synchronization check
+            startTimestampSync();
         }
 
         let lastScrolledSegment = null; // Track last scrolled segment
         let lastTargetScroll = null; // Track last target scroll position
         let isProgrammaticScroll = false; // Flag to ignore programmatic scrolls
+        let activeTranscriptIndex = 0; // Current active segment index
+        let lastUserScrollTime = 0; // Last time user manually scrolled
+        let syncCheckInterval = null; // Interval for timestamp sync check
 
         function updatePodcastProgress() {
             if (!currentPodcastAudio || currentPodcastIndex === null) return;
@@ -4364,6 +4370,11 @@
             const activeSegmentIndex = segments.findIndex(seg =>
                 currentTime >= seg.start && currentTime < seg.end
             );
+
+            // Update global active index (used by sync checker)
+            if (activeSegmentIndex !== -1) {
+                activeTranscriptIndex = activeSegmentIndex;
+            }
 
             // Check if we're on player page
             const playerPage = document.getElementById('podcastPlayerPage');
@@ -4467,6 +4478,9 @@
             // Ignore programmatic scrolls
             if (isProgrammaticScroll) return;
 
+            // Record user scroll time for sync logic
+            lastUserScrollTime = Date.now();
+
             // User scrolled manually - disable auto-scroll temporarily
             autoScrollEnabled[index] = false;
 
@@ -4481,11 +4495,74 @@
             }, 3000);
         }
 
+        // Timestamp-based synchronization to prevent drift on long podcasts
+        function startTimestampSync() {
+            if (syncCheckInterval) {
+                clearInterval(syncCheckInterval);
+            }
+
+            // Check sync every 1 second
+            syncCheckInterval = setInterval(() => {
+                checkAndFixTranscriptSync();
+            }, 1000);
+        }
+
+        function stopTimestampSync() {
+            if (syncCheckInterval) {
+                clearInterval(syncCheckInterval);
+                syncCheckInterval = null;
+            }
+            activeTranscriptIndex = 0;
+            lastUserScrollTime = 0;
+        }
+
+        function checkAndFixTranscriptSync() {
+            if (!currentPodcastAudio || currentPodcastIndex === null) return;
+            if (autoScrollEnabled[currentPodcastIndex] === false) return;
+
+            const segments = podcastTranscriptSegments[currentPodcastIndex];
+            if (!segments || segments.length === 0) return;
+
+            // Don't sync if user scrolled recently (within 3 seconds)
+            const timeSinceUserScroll = Date.now() - lastUserScrollTime;
+            if (timeSinceUserScroll < 3000) {
+                return;
+            }
+
+            const currentTime = currentPodcastAudio.currentTime;
+
+            // Find which segment SHOULD be active based on timestamp
+            const correctSegmentIndex = segments.findIndex(seg =>
+                currentTime >= seg.start && currentTime < seg.end
+            );
+
+            // If no segment found (between segments), don't sync
+            if (correctSegmentIndex === -1) return;
+
+            // If activeTranscriptIndex differs from correct index, fix it
+            if (activeTranscriptIndex !== correctSegmentIndex) {
+                const drift = Math.abs(correctSegmentIndex - activeTranscriptIndex);
+
+                // Only correct if drift is significant (more than 1 segment)
+                if (drift > 1) {
+                    console.log(`[SYNC] Detected drift: expected segment ${correctSegmentIndex}, but at ${activeTranscriptIndex}. Correcting...`);
+                    activeTranscriptIndex = correctSegmentIndex;
+                    lastScrolledSegment = null; // Force re-scroll
+                    scrollToActiveTranscriptSegment();
+                }
+            }
+
+            // Update active index
+            activeTranscriptIndex = correctSegmentIndex;
+        }
+
         function stopPodcastProgressUpdate() {
             if (podcastProgressInterval) {
                 clearInterval(podcastProgressInterval);
                 podcastProgressInterval = null;
             }
+            // Stop timestamp synchronization
+            stopTimestampSync();
         }
 
         // Media Session API - shows system media controls
