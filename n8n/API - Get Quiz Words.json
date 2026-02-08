@@ -25,7 +25,8 @@
         "collection": "words",
         "query": "={ \"stage\": \"repeat\" }",
         "options": {
-          "limit": 10
+          "limit": 10,
+          "sort": "{ \"trainDate\": 1 }"
         }
       },
       "credentials": {

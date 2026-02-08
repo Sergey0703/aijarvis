@@ -1521,6 +1521,7 @@
         const DICTIONARY_API_URL = 'https://n8n.aimediaflow.net/webhook/words-all';
         const MARK_REPEAT_API_URL = 'https://n8n.aimediaflow.net/webhook/mark-repeat';
         const QUIZ_API_URL = 'https://n8n.aimediaflow.net/webhook/quiz-words';
+        const UPDATE_WORD_STAGE_API_URL = 'https://n8n.aimediaflow.net/webhook/update-word-stage';
         const MARK_NEW_BATCH_API_URL = 'https://n8n.aimediaflow.net/webhook/mark-new-batch';
         const PODCASTS_API_URL = 'https://n8n.aimediaflow.net/webhook/voa-podcasts';
         const AUDIO_PROXY_URL = 'https://n8n.aimediaflow.net/webhook/audio-proxy';
@@ -2546,6 +2547,9 @@
             } else if (action === 'quiz-restart') {
                 restartQuiz();
                 return true;
+            } else if (action === 'quiz-start') {
+                startQuiz();
+                return true;
             } else if (action === 'quiz-audio') {
                 playQuizAudio();
                 return true;
@@ -3420,8 +3424,25 @@
         // Quiz functions
         async function loadQuiz() {
             const content = document.getElementById('quizContent');
-            const refreshBtn = document.getElementById('quizRefreshBtn');
             const wordCount = document.getElementById('quizWordCount');
+
+            // Show start screen
+            wordCount.textContent = '10 words';
+            content.innerHTML = `
+                <div class="quiz-complete">
+                    <div class="quiz-complete-icon">🎯</div>
+                    <div class="quiz-complete-title">Ready to Practice?</div>
+                    <div class="quiz-complete-subtitle">Test your vocabulary with 10 random words</div>
+                    <button class="quiz-next-btn" data-action="quiz-start" style="margin-top: 24px;">
+                        Start Quiz
+                    </button>
+                </div>
+            `;
+        }
+
+        async function startQuiz() {
+            const content = document.getElementById('quizContent');
+            const refreshBtn = document.getElementById('quizRefreshBtn');
 
             refreshBtn.classList.add('spinning');
             content.innerHTML = '<div class="loading">Loading quiz words...</div>';
@@ -3431,10 +3452,10 @@
                 if (!response.ok) throw new Error('Failed to fetch');
 
                 const data = await response.json();
+                // Get fresh 10 words each time
                 quizWords = data.targets || [];
                 quizDistractors = data.distractors || [];
 
-                wordCount.textContent = `${quizWords.length} words`;
                 quizCurrentIndex = 0;
                 quizAnswered = false;
                 quizCorrectCount = 0;
@@ -3466,13 +3487,9 @@
             }
         }
 
-        function restartQuiz() {
-            quizCurrentIndex = 0;
-            quizAnswered = false;
-            quizCorrectCount = 0;
-            quizWrongCount = 0;
-            prepareQuizQuestion();
-            renderQuiz();
+        async function restartQuiz() {
+            // Load fresh quiz words from API
+            await startQuiz();
         }
 
         function shuffleArray(array) {
@@ -3645,7 +3662,7 @@
             content.innerHTML = html;
         }
 
-        function handleQuizAnswer(optionIndex) {
+        async function handleQuizAnswer(optionIndex) {
             if (quizAnswered || optionIndex < 0 || optionIndex >= quizOptions.length) return;
 
             quizAnswered = true;
@@ -3654,6 +3671,33 @@
             const isCorrect = quizOptions[optionIndex].isCorrect;
             if (isCorrect) {
                 quizCorrectCount++;
+
+                // Update word stage to "new" on server
+                const currentWord = quizWords[quizCurrentIndex];
+                if (currentWord && currentWord._id) {
+                    const url = UPDATE_WORD_STAGE_API_URL + '?wordId=' + encodeURIComponent(currentWord._id) + '&stage=new';
+                    console.log('[QUIZ] Updating word stage:', currentWord.word, 'ID:', currentWord._id);
+
+                    try {
+                        const xhr = new XMLHttpRequest();
+                        xhr.timeout = 5000;
+                        xhr.open('GET', url);
+                        xhr.onload = function() {
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                console.log('[QUIZ] Word stage updated successfully:', currentWord.word);
+                            } else {
+                                console.error('[QUIZ] Failed to update word stage:', xhr.status, xhr.responseText);
+                            }
+                        };
+                        xhr.onerror = function() {
+                            console.error('[QUIZ] Network error updating word stage');
+                        };
+                        xhr.send();
+                    } catch (error) {
+                        console.error('[QUIZ] Error updating word stage:', error);
+                    }
+                }
+
                 if (tg?.HapticFeedback) {
                     tg.HapticFeedback.notificationOccurred('success');
                 }
