@@ -16,10 +16,7 @@
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [
-        256,
-        304
-      ]
+      "position": [256, 208]
     },
     {
       "parameters": {
@@ -30,10 +27,7 @@
       "name": "Get Podcasts List",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [
-        480,
-        304
-      ]
+      "position": [480, 208]
     },
     {
       "parameters": {
@@ -43,10 +37,7 @@
       "name": "Filter Today's Episodes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        672,
-        304
-      ]
+      "position": [704, 208]
     },
     {
       "parameters": {
@@ -71,23 +62,14 @@
       "name": "Filter New Episodes",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
-      "position": [
-        864,
-        304
-      ]
+      "position": [928, 208]
     },
     {
       "parameters": {
         "url": "={{ $json.audioUrl }}",
         "options": {
-          "redirect": {
-            "redirect": {}
-          },
-          "response": {
-            "response": {
-              "responseFormat": "file"
-            }
-          },
+          "redirect": {"redirect": {}},
+          "response": {"response": {"responseFormat": "file"}},
           "timeout": 60000
         }
       },
@@ -95,10 +77,7 @@
       "name": "Download Audio",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [
-        1056,
-        304
-      ]
+      "position": [1152, 208]
     },
     {
       "parameters": {
@@ -108,10 +87,7 @@
       "name": "Check File Size",
       "type": "n8n-nodes-base.code",
       "typeVersion": 1,
-      "position": [
-        1264,
-        304
-      ]
+      "position": [1376, 208]
     },
     {
       "parameters": {
@@ -129,11 +105,7 @@
           ]
         },
         "options": {
-          "response": {
-            "response": {
-              "responseFormat": "file"
-            }
-          },
+          "response": {"response": {"responseFormat": "file"}},
           "timeout": 120000
         }
       },
@@ -141,10 +113,7 @@
       "name": "Compress Audio",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [
-        1456,
-        304
-      ]
+      "position": [1600, 208]
     },
     {
       "parameters": {
@@ -161,18 +130,80 @@
             }
           ]
         },
-        "options": {
-          "timeout": 600000
-        }
+        "options": {"timeout": 600000}
       },
       "id": "http-whisper",
       "name": "Send to Whisper",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [
-        1664,
-        304
-      ]
+      "position": [1824, 208]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get transcript from Whisper\nconst whisperResponse = $input.first().json;\n\n// Extract text with timestamps\nlet textToTranslate = '';\nif (whisperResponse.segments && Array.isArray(whisperResponse.segments)) {\n  // Keep segments with timestamps for later\n  textToTranslate = whisperResponse.segments.map(seg => seg.text.trim()).join(' ');\n} else if (whisperResponse.text) {\n  textToTranslate = whisperResponse.text;\n} else {\n  textToTranslate = JSON.stringify(whisperResponse);\n}\n\nreturn [{ json: {\n  originalTranscript: whisperResponse,\n  prompt: `Translate the following English podcast transcript to Russian. Keep it natural and fluent. Preserve the meaning and tone. Do not add any introductions or explanations, just provide the translation:\\n\\n${textToTranslate}`\n}}];"
+      },
+      "id": "prepare-translation",
+      "name": "Prepare Translation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2048, 208]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "needsFallback": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a professional translator. Translate English podcast transcripts to Russian accurately and naturally, preserving the meaning and conversational tone."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "translate-chain",
+      "name": "Translate to Russian",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.8,
+      "position": [2272, 208]
+    },
+    {
+      "parameters": {"options": {}},
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [2160, 416],
+      "id": "56ec181d-4341-4953-8f40-954e2679586d",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "LkIHzVT9REIIoRbA",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-nano",
+          "mode": "list",
+          "cachedResultName": "gpt-5-nano"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [2256, 512],
+      "id": "c044cbef-92d8-4b2c-bc5c-722fb8bed835",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "zI8kGOIzPCNm14vJ",
+          "name": "OpenAi account"
+        }
+      }
     },
     {
       "parameters": {
@@ -186,53 +217,21 @@
           "mappingMode": "defineBelow",
           "value": {
             "audio_url": "={{ $('Check File Size').item.json.audioUrl }}",
-            "transcript_text": "={{ $json.text || JSON.stringify($json) }}",
-            "segments": "={{ JSON.stringify($json) }}",
-            "file_size_mb": "={{ $('Check File Size').item.json.fileSizeMB }}"
+            "transcript_text": "={{ $('Send to Whisper').item.json.text || JSON.stringify($('Send to Whisper').item.json) }}",
+            "segments": "={{ JSON.stringify($('Send to Whisper').item.json) }}",
+            "file_size_mb": "={{ $('Check File Size').item.json.fileSizeMB }}",
+            "translate": "={{ $('Translate to Russian').item.json.text }}"
           },
           "matchingColumns": [],
           "schema": [
-            {
-              "id": "audio_url",
-              "displayName": "audio_url",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "transcript_text",
-              "displayName": "transcript_text",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "segments",
-              "displayName": "segments",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "readOnly": false,
-              "removed": false
-            },
-            {
-              "id": "file_size_mb",
-              "displayName": "file_size_mb",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "number",
-              "readOnly": false,
-              "removed": false
-            }
-          ]
+            {"id": "audio_url", "displayName": "audio_url", "required": false, "defaultMatch": false, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "transcript_text", "displayName": "transcript_text", "required": false, "defaultMatch": false, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "segments", "displayName": "segments", "required": false, "defaultMatch": false, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "file_size_mb", "displayName": "file_size_mb", "required": false, "defaultMatch": false, "display": true, "type": "number", "readOnly": false, "removed": false},
+            {"id": "translate", "displayName": "translate", "required": false, "defaultMatch": false, "display": true, "type": "string", "readOnly": false, "removed": false}
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
         "options": {}
       },
@@ -240,103 +239,22 @@
       "name": "Save to Cache",
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
-      "position": [
-        1856,
-        304
-      ]
+      "position": [2624, 208]
     }
   ],
   "connections": {
-    "Schedule Trigger": {
-      "main": [
-        [
-          {
-            "node": "Get Podcasts List",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Podcasts List": {
-      "main": [
-        [
-          {
-            "node": "Split Episodes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Split Episodes": {
-      "main": [
-        [
-          {
-            "node": "Filter New Episodes",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Filter New Episodes": {
-      "main": [
-        [
-          {
-            "node": "Download Audio",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Download Audio": {
-      "main": [
-        [
-          {
-            "node": "Check File Size",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check File Size": {
-      "main": [
-        [
-          {
-            "node": "Compress Audio",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Compress Audio": {
-      "main": [
-        [
-          {
-            "node": "Send to Whisper",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send to Whisper": {
-      "main": [
-        [
-          {
-            "node": "Save to Cache",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
+    "Schedule Trigger": {"main": [[{"node": "Get Podcasts List", "type": "main", "index": 0}]]},
+    "Get Podcasts List": {"main": [[{"node": "Filter Today's Episodes", "type": "main", "index": 0}]]},
+    "Filter Today's Episodes": {"main": [[{"node": "Filter New Episodes", "type": "main", "index": 0}]]},
+    "Filter New Episodes": {"main": [[{"node": "Download Audio", "type": "main", "index": 0}]]},
+    "Download Audio": {"main": [[{"node": "Check File Size", "type": "main", "index": 0}]]},
+    "Check File Size": {"main": [[{"node": "Compress Audio", "type": "main", "index": 0}]]},
+    "Compress Audio": {"main": [[{"node": "Send to Whisper", "type": "main", "index": 0}]]},
+    "Send to Whisper": {"main": [[{"node": "Prepare Translation", "type": "main", "index": 0}]]},
+    "Prepare Translation": {"main": [[{"node": "Translate to Russian", "type": "main", "index": 0}]]},
+    "Translate to Russian": {"main": [[{"node": "Save to Cache", "type": "main", "index": 0}]]},
+    "Google Gemini Chat Model": {"ai_languageModel": [[{"node": "Translate to Russian", "type": "ai_languageModel", "index": 0}]]},
+    "OpenAI Chat Model": {"ai_languageModel": [[{"node": "Translate to Russian", "type": "ai_languageModel", "index": 1}]]}
   },
-  "settings": {
-    "executionOrder": "v1"
-  }
+  "settings": {"executionOrder": "v1"}
 }
