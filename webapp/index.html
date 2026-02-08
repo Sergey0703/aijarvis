@@ -1577,6 +1577,7 @@
         let transcribingPodcasts = new Set(); // track which podcasts are being transcribed
         let autoScrollEnabled = {}; // track auto-scroll state per podcast
         let userScrollTimeout = null; // timeout for detecting user scroll
+        let wakeLock = null; // Screen wake lock
         let quizDistractors = []; // All words for distractors
         let quizCurrentTab = 'activeRecall'; // 'activeRecall' or 'scheduled'
         let quizCurrentIndex = 0;
@@ -2094,6 +2095,10 @@
             if (prevGroupDate) {
                 updateGroupContent(prevGroupDate);
             }
+
+            // Clear media session and release wake lock
+            clearMediaSession();
+            releaseWakeLock();
         }
 
         function highlightWord(groupDate, index) {
@@ -2137,6 +2142,12 @@
 
             const word = group.words[autoplayIndex];
             highlightWord(activeGroupDate, autoplayIndex);
+
+            // Setup media session and wake lock on first word
+            if (autoplayIndex === 0 || (groupAutoplayStates[activeGroupDate] && autoplayIndex === groupAutoplayStates[activeGroupDate][autoplayMode])) {
+                setupVocabularyMediaSession(word.word, autoplayMode);
+                requestWakeLock();
+            }
 
             if (autoplayMode === 'english') {
                 // English only: word -> 1s pause -> next word
@@ -2278,6 +2289,11 @@
             if (window.speechSynthesis && window.speechSynthesis.speaking) {
                 window.speechSynthesis.cancel();
             }
+
+            // Clear media session and release wake lock
+            clearMediaSession();
+            releaseWakeLock();
+
             document.querySelectorAll('.word-card.highlighted').forEach(el => {
                 el.classList.remove('highlighted');
             });
@@ -2313,6 +2329,12 @@
 
             const word = randomWords[randomAutoplayIndex];
             highlightRandomWord(randomAutoplayIndex);
+
+            // Setup media session and wake lock on first word
+            if (randomAutoplayIndex === 0 || randomAutoplayIndex === randomAutoplayIndexEnglish || randomAutoplayIndex === randomAutoplayIndexBoth) {
+                setupVocabularyMediaSession(word.word, randomAutoplayMode);
+                requestWakeLock();
+            }
 
             if (randomAutoplayMode === 'english') {
                 playRandomWordAudio(word.audio, () => {
@@ -3156,6 +3178,10 @@
             if (window.speechSynthesis && window.speechSynthesis.speaking) {
                 window.speechSynthesis.cancel();
             }
+
+            // Clear media session and release wake lock
+            clearMediaSession();
+            releaseWakeLock();
             document.querySelectorAll('#dictionaryContent .word-card.highlighted').forEach(el => {
                 el.classList.remove('highlighted');
             });
@@ -3196,6 +3222,12 @@
 
             const word = dictionaryWords[dictAutoplayIndex];
             highlightDictWord(dictAutoplayIndex);
+
+            // Setup media session and wake lock on first word
+            if (dictAutoplayIndex === 0 || dictAutoplayIndex === dictAutoplayIndexEnglish || dictAutoplayIndex === dictAutoplayIndexBoth) {
+                setupVocabularyMediaSession(word.word, dictAutoplayMode);
+                requestWakeLock();
+            }
 
             if (dictAutoplayMode === 'english') {
                 playDictWordAudio(word.audio, () => {
@@ -3916,6 +3948,8 @@
                 currentPodcastAudio.onended = () => {
                     currentPlayingPodcast = null;
                     stopPodcastProgressUpdate();
+                    clearMediaSession();
+                    releaseWakeLock();
                     renderPodcasts();
                 };
 
@@ -3942,6 +3976,9 @@
                         console.log('Podcast playing:', audioUrl);
                         renderPodcasts(); // Re-render to show player controls
                         startPodcastProgressUpdate();
+                        // Setup media controls and wake lock
+                        setupMediaSession(podcastEpisodes[index]);
+                        requestWakeLock();
                     })
                     .catch(error => {
                         console.error('Error playing podcast:', error);
@@ -3971,6 +4008,9 @@
                 currentPodcastAudio = null;
             }
             currentPlayingPodcast = null;
+            // Clear media session and release wake lock
+            clearMediaSession();
+            releaseWakeLock();
         }
 
         // New dedicated player screen functions
@@ -4014,6 +4054,8 @@
             currentPodcastAudio.onended = () => {
                 document.getElementById('playerPlayPauseBtn').textContent = '▶';
                 stopPodcastProgressUpdate();
+                clearMediaSession();
+                releaseWakeLock();
             };
 
             currentPodcastAudio.onerror = (e) => {
@@ -4033,6 +4075,9 @@
                 .then(() => {
                     document.getElementById('playerPlayPauseBtn').textContent = '⏸';
                     startPodcastProgressUpdate();
+                    // Setup media controls and wake lock
+                    setupMediaSession(episode);
+                    requestWakeLock();
                 })
                 .catch(error => {
                     console.error('Error playing podcast:', error);
@@ -4047,6 +4092,9 @@
                 currentPodcastAudio = null;
             }
             stopPodcastProgressUpdate();
+            // Clear media session and release wake lock
+            clearMediaSession();
+            releaseWakeLock();
             currentPlayingPodcast = null;
             currentPodcastIndex = null;
 
@@ -4066,6 +4114,7 @@
                     .then(() => {
                         document.getElementById('playerPlayPauseBtn').textContent = '⏸';
                         startPodcastProgressUpdate();
+                        requestWakeLock(); // Re-acquire wake lock on resume
                     })
                     .catch(error => {
                         console.error('Error playing:', error);
@@ -4074,6 +4123,7 @@
                 currentPodcastAudio.pause();
                 document.getElementById('playerPlayPauseBtn').textContent = '▶';
                 stopPodcastProgressUpdate();
+                releaseWakeLock(); // Release wake lock on pause
             }
         }
 
@@ -4436,6 +4486,136 @@
                 clearInterval(podcastProgressInterval);
                 podcastProgressInterval = null;
             }
+        }
+
+        // Media Session API - shows system media controls
+        function setupMediaSession(episode) {
+            if (!('mediaSession' in navigator)) {
+                console.log('Media Session API not supported');
+                return;
+            }
+
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: episode.title,
+                artist: 'VOA Learning English',
+                album: 'Podcasts',
+                artwork: [
+                    { src: 'https://vocab.aimediaflow.net/icon-192.png', sizes: '192x192', type: 'image/png' },
+                    { src: 'https://vocab.aimediaflow.net/icon-512.png', sizes: '512x512', type: 'image/png' }
+                ]
+            });
+
+            // Set up action handlers
+            navigator.mediaSession.setActionHandler('play', () => {
+                if (currentPodcastAudio) {
+                    currentPodcastAudio.play();
+                }
+            });
+
+            navigator.mediaSession.setActionHandler('pause', () => {
+                if (currentPodcastAudio) {
+                    currentPodcastAudio.pause();
+                }
+            });
+
+            navigator.mediaSession.setActionHandler('seekbackward', () => {
+                if (currentPodcastAudio) {
+                    currentPodcastAudio.currentTime = Math.max(0, currentPodcastAudio.currentTime - 10);
+                }
+            });
+
+            navigator.mediaSession.setActionHandler('seekforward', () => {
+                if (currentPodcastAudio) {
+                    currentPodcastAudio.currentTime = Math.min(
+                        currentPodcastAudio.duration || 0,
+                        currentPodcastAudio.currentTime + 10
+                    );
+                }
+            });
+
+            console.log('Media Session configured for:', episode.title);
+        }
+
+        function clearMediaSession() {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = null;
+                navigator.mediaSession.setActionHandler('play', null);
+                navigator.mediaSession.setActionHandler('pause', null);
+                navigator.mediaSession.setActionHandler('seekbackward', null);
+                navigator.mediaSession.setActionHandler('seekforward', null);
+            }
+        }
+
+        // Wake Lock API - prevents screen from sleeping
+        async function requestWakeLock() {
+            if (!('wakeLock' in navigator)) {
+                console.log('Wake Lock API not supported');
+                return;
+            }
+
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log('Wake Lock acquired');
+
+                wakeLock.addEventListener('release', () => {
+                    console.log('Wake Lock released');
+                });
+            } catch (err) {
+                console.error('Wake Lock error:', err);
+            }
+        }
+
+        async function releaseWakeLock() {
+            if (wakeLock) {
+                try {
+                    await wakeLock.release();
+                    wakeLock = null;
+                    console.log('Wake Lock manually released');
+                } catch (err) {
+                    console.error('Wake Lock release error:', err);
+                }
+            }
+        }
+
+        // Re-acquire wake lock when page becomes visible again
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
+
+        // Media Session for vocabulary modes (Dictionary, Words to Review)
+        function setupVocabularyMediaSession(word, mode) {
+            if (!('mediaSession' in navigator)) {
+                return;
+            }
+
+            const modeLabel = mode === 'english' ? 'English Only' : 'English + Russian';
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: word,
+                artist: `Vocabulary Review - ${modeLabel}`,
+                album: 'English Learning',
+                artwork: [
+                    { src: 'https://vocab.aimediaflow.net/icon-192.png', sizes: '192x192', type: 'image/png' },
+                    { src: 'https://vocab.aimediaflow.net/icon-512.png', sizes: '512x512', type: 'image/png' }
+                ]
+            });
+
+            // Setup basic controls
+            navigator.mediaSession.setActionHandler('pause', () => {
+                // Stop autoplay
+                if (dictAutoplayMode) {
+                    stopDictAutoplay();
+                } else if (randomAutoplayMode) {
+                    stopRandomAutoplay();
+                } else if (autoplayMode) {
+                    stopAutoplay();
+                }
+            });
+
+            navigator.mediaSession.setActionHandler('play', null); // Not applicable for vocabulary
+            navigator.mediaSession.setActionHandler('seekbackward', null);
+            navigator.mediaSession.setActionHandler('seekforward', null);
         }
 
         function togglePodcastDescription(index) {
