@@ -1,0 +1,342 @@
+{
+  "name": "Scheduled - Auto Transcribe Podcasts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6,14,18 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-1",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://n8n.aimediaflow.net/webhook/voa-podcasts",
+        "options": {}
+      },
+      "id": "http-get-podcasts",
+      "name": "Get Podcasts List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        480,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst episodes = data.episodes || [];\n\n// Get today's date in YYYY-MM-DD format (UTC)\nconst today = new Date().toISOString().split('T')[0];\nconsole.log('Today:', today);\n\n// Filter only today's episodes\nconst todayEpisodes = episodes.filter(ep => {\n  const episodeDate = ep.date || ep.dateTime?.split('T')[0];\n  return episodeDate === today;\n});\n\nconsole.log(`Total episodes: ${episodes.length}, Today's episodes: ${todayEpisodes.length}`);\n\n// Return each today's episode as separate item\nreturn todayEpisodes.map(ep => ({\n  json: {\n    audioUrl: ep.audioUrl,\n    title: ep.title,\n    date: ep.date\n  }\n}));"
+      },
+      "id": "code-split-episodes",
+      "name": "Filter Today's Episodes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "w8Wf2jE8RjoI2FkO",
+          "mode": "list",
+          "cachedResultName": "podcast_transcripts"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "audio_url",
+              "keyValue": "={{ $json.audioUrl }}"
+            }
+          ]
+        }
+      },
+      "id": "filter-new",
+      "name": "Filter New Episodes",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        864,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.audioUrl }}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "http-download",
+      "name": "Download Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1056,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst binaryData = item.binary?.data;\n\nif (!binaryData) {\n  console.log('No binary data found');\n  return { json: { fileSizeMB: 0, shouldCompress: false }, binary: item.binary };\n}\n\nconst fileSize = binaryData.fileSize || (binaryData.data ? Buffer.byteLength(binaryData.data, 'base64') : 0);\nconst fileSizeMB = parseFloat((fileSize / 1024 / 1024).toFixed(2));\n\nconsole.log(`Audio file size: ${fileSizeMB} MB (${fileSize} bytes)`);\n\nreturn {\n  json: {\n    ...item.json,\n    fileSizeMB,\n    shouldCompress: fileSizeMB > 20\n  },\n  binary: item.binary\n};"
+      },
+      "id": "code-check-size",
+      "name": "Check File Size",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ffmpeg-audio-compressor:3000/compress",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "audio",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "http-compress",
+      "name": "Compress Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1456,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://whisper-transcription:9000/asr?output=json&task=transcribe&language=en",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "audio_file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "id": "http-whisper",
+      "name": "Send to Whisper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1664,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "w8Wf2jE8RjoI2FkO",
+          "mode": "list",
+          "cachedResultName": "podcast_transcripts"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "audio_url": "={{ $('Check File Size').item.json.audioUrl }}",
+            "transcript_text": "={{ $json.text || JSON.stringify($json) }}",
+            "segments": "={{ JSON.stringify($json) }}",
+            "file_size_mb": "={{ $('Check File Size').item.json.fileSizeMB }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "audio_url",
+              "displayName": "audio_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "transcript_text",
+              "displayName": "transcript_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "segments",
+              "displayName": "segments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "file_size_mb",
+              "displayName": "file_size_mb",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "save-cache",
+      "name": "Save to Cache",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1856,
+        304
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Podcasts List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Podcasts List": {
+      "main": [
+        [
+          {
+            "node": "Split Episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Episodes": {
+      "main": [
+        [
+          {
+            "node": "Filter New Episodes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter New Episodes": {
+      "main": [
+        [
+          {
+            "node": "Download Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Audio": {
+      "main": [
+        [
+          {
+            "node": "Check File Size",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check File Size": {
+      "main": [
+        [
+          {
+            "node": "Compress Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compress Audio": {
+      "main": [
+        [
+          {
+            "node": "Send to Whisper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Whisper": {
+      "main": [
+        [
+          {
+            "node": "Save to Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

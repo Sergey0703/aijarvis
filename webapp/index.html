@@ -1546,6 +1546,9 @@
         // Random tab autoplay state
         let randomAutoplayMode = null;
         let randomAutoplayIndex = 0;
+        // Separate state for each random autoplay mode
+        let randomAutoplayIndexEnglish = 0;
+        let randomAutoplayIndexBoth = 0;
 
         // Digest state
         let currentDigest = null;
@@ -1556,6 +1559,9 @@
         let dictionaryWords = [];
         let dictAutoplayMode = null;
         let dictAutoplayIndex = 0;
+        // Separate state for each autoplay mode
+        let dictAutoplayIndexEnglish = 0;
+        let dictAutoplayIndexBoth = 0;
         let revealedTranslations = new Set(); // Track which translations are revealed
         let markedAsRepeat = new Set(); // Track word IDs marked as repeat (exclude from new batch)
 
@@ -1598,6 +1604,8 @@
         let currentPlayingBtn = null;
         let autoplayMode = null; // null, 'english', 'both'
         let autoplayIndex = 0;
+        // Separate state for each group autoplay mode per date
+        let groupAutoplayStates = {}; // { "2024-01-15": { english: 5, both: 3 } }
         let autoplayTimeout = null;
         let isAutoplayPaused = false;
 
@@ -1667,6 +1675,8 @@
 
             refreshBtn.classList.add('spinning');
             content.innerHTML = '<div class="loading">Loading words...</div>';
+            // Reset group autoplay states when loading new page
+            groupAutoplayStates = {};
 
             try {
                 const url = `${API_URL}?mode=grouped&page=${page}&daysPerPage=${daysPerPage}`;
@@ -1727,6 +1737,9 @@
 
             refreshBtn.classList.add('spinning');
             content.innerHTML = '<div class="loading">Loading random words...</div>';
+            // Reset autoplay indices when loading new random words
+            randomAutoplayIndexEnglish = 0;
+            randomAutoplayIndexBoth = 0;
 
             try {
                 const response = await fetch(API_URL + '?mode=random');
@@ -2007,15 +2020,32 @@
         // Autoplay functions for groups
         async function toggleGroupAutoplay(groupDate, mode) {
             if (activeGroupDate === groupDate && autoplayMode === mode) {
-                // Stop autoplay
+                // Pause: save current index for this mode and date
+                if (!groupAutoplayStates[groupDate]) {
+                    groupAutoplayStates[groupDate] = { english: 0, both: 0 };
+                }
+                groupAutoplayStates[groupDate][mode] = autoplayIndex;
                 stopAutoplay();
+                updateGroupContent(groupDate);
             } else {
                 // Start autoplay - first unlock audio from this user gesture
                 await unlockAudio();
                 stopAutoplay();
                 activeGroupDate = groupDate;
                 autoplayMode = mode;
-                autoplayIndex = 0;
+
+                // Restore index for this mode and date
+                if (!groupAutoplayStates[groupDate]) {
+                    groupAutoplayStates[groupDate] = { english: 0, both: 0 };
+                }
+                autoplayIndex = groupAutoplayStates[groupDate][mode] || 0;
+
+                // Ensure index is valid
+                const group = dateGroups.find(g => g.date === groupDate);
+                if (group && autoplayIndex >= group.words.length) {
+                    autoplayIndex = 0;
+                }
+
                 updateGroupContent(groupDate);
                 playNextWord();
             }
@@ -2095,9 +2125,14 @@
                 return;
             }
 
-            // Loop back to start if reached end
+            // Reached end of list, stop and save position
             if (autoplayIndex >= group.words.length) {
-                autoplayIndex = 0;
+                if (!groupAutoplayStates[activeGroupDate]) {
+                    groupAutoplayStates[activeGroupDate] = { english: 0, both: 0 };
+                }
+                groupAutoplayStates[activeGroupDate][autoplayMode] = autoplayIndex;
+                stopAutoplay();
+                return;
             }
 
             const word = group.words[autoplayIndex];
@@ -2108,6 +2143,9 @@
                 playWordAudioAutoplay(word.audio, () => {
                     autoplayTimeout = setTimeout(() => {
                         autoplayIndex++;
+                        if (groupAutoplayStates[activeGroupDate]) {
+                            groupAutoplayStates[activeGroupDate].english = autoplayIndex;
+                        }
                         playNextWord();
                     }, 1000);
                 });
@@ -2118,6 +2156,9 @@
                         speakRussian(word.word, () => {
                             autoplayTimeout = setTimeout(() => {
                                 autoplayIndex++;
+                                if (groupAutoplayStates[activeGroupDate]) {
+                                    groupAutoplayStates[activeGroupDate].both = autoplayIndex;
+                                }
                                 playNextWord();
                             }, 2000);
                         });
@@ -2190,12 +2231,31 @@
         // Random words autoplay
         async function toggleRandomAutoplay(mode) {
             if (randomAutoplayMode === mode) {
+                // Pause: save current index for this mode
+                if (mode === 'english') {
+                    randomAutoplayIndexEnglish = randomAutoplayIndex;
+                } else if (mode === 'both') {
+                    randomAutoplayIndexBoth = randomAutoplayIndex;
+                }
                 stopRandomAutoplay();
+                renderRandomWords(); // Update UI to show paused state
             } else {
                 await unlockAudio();
                 stopRandomAutoplay();
                 randomAutoplayMode = mode;
-                randomAutoplayIndex = 0;
+
+                // Restore index for this mode
+                if (mode === 'english') {
+                    randomAutoplayIndex = randomAutoplayIndexEnglish;
+                } else if (mode === 'both') {
+                    randomAutoplayIndex = randomAutoplayIndexBoth;
+                }
+
+                // Ensure index is valid
+                if (randomAutoplayIndex >= randomWords.length) {
+                    randomAutoplayIndex = 0;
+                }
+
                 renderRandomWords();
                 playNextRandomWord();
             }
@@ -2241,7 +2301,14 @@
             }
 
             if (randomAutoplayIndex >= randomWords.length) {
-                randomAutoplayIndex = 0;
+                // Reached end of list, stop and save position
+                if (randomAutoplayMode === 'english') {
+                    randomAutoplayIndexEnglish = randomAutoplayIndex;
+                } else if (randomAutoplayMode === 'both') {
+                    randomAutoplayIndexBoth = randomAutoplayIndex;
+                }
+                stopRandomAutoplay();
+                return;
             }
 
             const word = randomWords[randomAutoplayIndex];
@@ -2251,6 +2318,7 @@
                 playRandomWordAudio(word.audio, () => {
                     autoplayTimeout = setTimeout(() => {
                         randomAutoplayIndex++;
+                        randomAutoplayIndexEnglish = randomAutoplayIndex;
                         playNextRandomWord();
                     }, 1000);
                 });
@@ -2260,6 +2328,7 @@
                         speakRussian(word.word, () => {
                             autoplayTimeout = setTimeout(() => {
                                 randomAutoplayIndex++;
+                                randomAutoplayIndexBoth = randomAutoplayIndex;
                                 playNextRandomWord();
                             }, 2000);
                         });
@@ -2908,6 +2977,9 @@
             content.innerHTML = '<div class="loading">Loading dictionary...</div>';
             revealedTranslations.clear(); // Reset revealed state on reload
             markedAsRepeat.clear(); // Reset marked words on reload
+            // Reset autoplay indices when loading new dictionary
+            dictAutoplayIndexEnglish = 0;
+            dictAutoplayIndexBoth = 0;
 
             try {
                 const response = await fetch(DICTIONARY_API_URL);
@@ -3037,12 +3109,31 @@
 
         async function toggleDictAutoplay(mode) {
             if (dictAutoplayMode === mode) {
+                // Pause: save current index for this mode
+                if (mode === 'english') {
+                    dictAutoplayIndexEnglish = dictAutoplayIndex;
+                } else if (mode === 'both') {
+                    dictAutoplayIndexBoth = dictAutoplayIndex;
+                }
                 stopDictAutoplay();
+                renderDictionary(); // Update UI to show paused state
             } else {
                 await unlockAudio();
                 stopDictAutoplay();
                 dictAutoplayMode = mode;
-                dictAutoplayIndex = 0;
+
+                // Restore index for this mode
+                if (mode === 'english') {
+                    dictAutoplayIndex = dictAutoplayIndexEnglish;
+                } else if (mode === 'both') {
+                    dictAutoplayIndex = dictAutoplayIndexBoth;
+                }
+
+                // Ensure index is valid
+                if (dictAutoplayIndex >= dictionaryWords.length) {
+                    dictAutoplayIndex = 0;
+                }
+
                 renderDictionary();
                 playNextDictWord();
             }
@@ -3093,7 +3184,14 @@
             }
 
             if (dictAutoplayIndex >= dictionaryWords.length) {
-                dictAutoplayIndex = 0;
+                // Reached end of list, stop and save position
+                if (dictAutoplayMode === 'english') {
+                    dictAutoplayIndexEnglish = dictAutoplayIndex;
+                } else if (dictAutoplayMode === 'both') {
+                    dictAutoplayIndexBoth = dictAutoplayIndex;
+                }
+                stopDictAutoplay();
+                return;
             }
 
             const word = dictionaryWords[dictAutoplayIndex];
@@ -3103,6 +3201,7 @@
                 playDictWordAudio(word.audio, () => {
                     autoplayTimeout = setTimeout(() => {
                         dictAutoplayIndex++;
+                        dictAutoplayIndexEnglish = dictAutoplayIndex;
                         playNextDictWord();
                     }, 1000);
                 });
@@ -3112,6 +3211,7 @@
                         speakRussian(word.word, () => {
                             autoplayTimeout = setTimeout(() => {
                                 dictAutoplayIndex++;
+                                dictAutoplayIndexBoth = dictAutoplayIndex;
                                 playNextDictWord();
                             }, 2000);
                         });

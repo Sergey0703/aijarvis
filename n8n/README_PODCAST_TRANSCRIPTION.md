@@ -134,3 +134,61 @@ curl "https://n8n.aimediaflow.net/webhook/transcribe-podcast?audioUrl=http://exa
 
 ### Rollback Plan:
 If needed, reactivate old workflow T4amaL9X8Z9vZG7Q and change frontend endpoint back to original URL.
+
+---
+
+## Scheduled Auto-Transcription Workflow
+
+### Workflow: Scheduled - Auto Transcribe Podcasts
+**File:** `Scheduled_-_Auto_Transcribe_Podcasts.json`
+**Type:** Scheduled (Cron-based)
+**Schedule:** 3 times daily at **06:00, 14:00, 18:00 UTC**
+
+#### Purpose:
+Automatically transcribe new podcast episodes as they are published, without manual intervention.
+
+#### How It Works:
+1. **Trigger**: Runs on schedule (`0 6,14,18 * * *`)
+2. **Fetch Episodes**: Calls `/webhook/voa-podcasts` to get latest episodes
+3. **Filter Today**: Keeps only episodes published TODAY (UTC timezone)
+4. **Filter New**: Checks DataTable to skip already-transcribed episodes
+5. **Process**: For each new episode:
+   - Download audio
+   - Check file size
+   - Compress with FFmpeg (if > 20MB)
+   - Transcribe with Whisper AI
+   - Save to DataTable cache
+
+#### Schedule Logic:
+- **06:00 UTC** - Catches morning episodes (published ~05:00 UTC)
+- **14:00 UTC** - Catches afternoon episodes (published ~13:00 UTC)
+- **18:00 UTC** - Catches evening episodes (published ~16:30-17:00 UTC)
+
+Each run processes ~1 hour after publication to ensure episode is available.
+
+#### Benefits:
+- ✅ Fully automatic - no manual intervention needed
+- ✅ Efficient - only transcribes NEW episodes from TODAY
+- ✅ Non-intrusive - doesn't affect existing webhook API
+- ✅ Reliable - runs 3x daily to catch all new content
+- ✅ Resource-friendly - skips old episodes, processes only fresh content
+
+#### Monitoring:
+Check n8n executions panel to see:
+- How many episodes processed per run
+- Which episodes were skipped (already in cache)
+- Any failures (network issues, Whisper errors, etc.)
+
+#### Configuration:
+To change schedule, edit the cron expression in Schedule Trigger node:
+```
+0 6,14,18 * * *  (current: 3x daily)
+0 */2 * * *      (example: every 2 hours)
+0 8,20 * * *     (example: twice daily)
+```
+
+#### Deployment:
+1. Import workflow into n8n
+2. Activate the workflow
+3. Monitor first few executions to ensure working correctly
+4. Episodes will auto-transcribe going forward
