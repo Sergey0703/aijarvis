@@ -1,0 +1,76 @@
+{
+  "id": "srKn9HgCFDO7TK8c",
+  "name": "API - Save Word",
+  "nodes": [
+    {
+      "id": "webhook-save",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "save-word-webhook-v1",
+      "parameters": {
+        "path": "save-word",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "code-validate",
+      "name": "Validate & Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst word = (body.word || '').trim();\nconst translate = (body.translate || '').trim();\n\nif (!word) throw new Error('word is required');\nif (!translate) throw new Error('translate is required');\n\nconst now = new Date();\n\nreturn [{ json: {\n  word: word.toLowerCase(),\n  translate,\n  transcript: (body.transcript || '').replace(/^\\/|\\/$/g, ''),\n  partOfSpeech: body.partOfSpeech || '',\n  level: body.level || '',\n  stage: 'new',\n  trainDate: now\n} }];"
+      }
+    },
+    {
+      "id": "mongo-insert",
+      "name": "MongoDB: Save Word",
+      "type": "n8n-nodes-base.mongoDb",
+      "typeVersion": 1.1,
+      "position": [440, 0],
+      "parameters": {
+        "operation": "insert",
+        "collection": "words",
+        "fields": "={{ JSON.stringify($json) }}"
+      },
+      "credentials": {
+        "mongoDb": {
+          "id": "p5lVP30sDORJCo8v",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "id": "respond-save",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [660, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, word: $('Validate & Prepare').first().json.word } }}",
+        "options": {
+          "responseCode": 201,
+          "responseHeaders": {
+            "entries": [
+              {"name": "Access-Control-Allow-Origin", "value": "*"},
+              {"name": "Access-Control-Allow-Methods", "value": "POST, OPTIONS"},
+              {"name": "Access-Control-Allow-Headers", "value": "Content-Type"}
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node": "Validate & Prepare", "type": "main", "index": 0}]]},
+    "Validate & Prepare": {"main": [[{"node": "MongoDB: Save Word", "type": "main", "index": 0}]]},
+    "MongoDB: Save Word": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]}
+  },
+  "settings": {"executionOrder": "v1"},
+  "active": true
+}
