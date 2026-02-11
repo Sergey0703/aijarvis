@@ -23,7 +23,27 @@
       "typeVersion": 2,
       "position": [220, 0],
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || {};\nconst word = (body.word || '').trim();\nconst translate = (body.translate || '').trim();\n\nif (!word) throw new Error('word is required');\nif (!translate) throw new Error('translate is required');\n\nreturn [{ json: {\n  word: word.toLowerCase(),\n  translate,\n  transcript: (body.transcript || '').replace(/^\\/|\\/$/g, ''),\n  partOfSpeech: body.partOfSpeech || '',\n  level: body.level || '',\n  stage: 'new',\n  trainDate: new Date().toISOString(),\n  code: ''\n} }];"
+        "jsCode": "const body = $input.first().json.body || {};\nconst word = (body.word || '').trim();\nconst translate = (body.translate || '').trim();\n\nif (!word) throw new Error('word is required');\nif (!translate) throw new Error('translate is required');\n\nfunction uuid() {\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\nreturn [{ json: {\n  word: word.toLowerCase(),\n  translate,\n  transcript: (body.transcript || '').replace(/^\\/|\\/$/g, ''),\n  partOfSpeech: body.partOfSpeech || '',\n  level: body.level || '',\n  stage: 'repeat',\n  code: uuid()\n} }];"
+      }
+    },
+    {
+      "id": "set-date",
+      "name": "Set Train Date",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [440, 0],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "trainDate",
+              "value": "={{ new Date() }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
       }
     },
     {
@@ -31,7 +51,7 @@
       "name": "MongoDB: Save Word",
       "type": "n8n-nodes-base.mongoDb",
       "typeVersion": 1.1,
-      "position": [440, 0],
+      "position": [660, 0],
       "parameters": {
         "operation": "insert",
         "collection": "words",
@@ -49,7 +69,7 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [660, 0],
+      "position": [880, 0],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ { success: true, word: $('Validate & Prepare').first().json.word } }}",
@@ -68,7 +88,8 @@
   ],
   "connections": {
     "Webhook": {"main": [[{"node": "Validate & Prepare", "type": "main", "index": 0}]]},
-    "Validate & Prepare": {"main": [[{"node": "MongoDB: Save Word", "type": "main", "index": 0}]]},
+    "Validate & Prepare": {"main": [[{"node": "Set Train Date", "type": "main", "index": 0}]]},
+    "Set Train Date": {"main": [[{"node": "MongoDB: Save Word", "type": "main", "index": 0}]]},
     "MongoDB: Save Word": {"main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]}
   },
   "settings": {"executionOrder": "v1"},
