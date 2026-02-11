@@ -23,7 +23,7 @@
       "typeVersion": 2,
       "position": [220, 0],
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || {};\nconst word = (body.word || '').trim();\nconst translate = (body.translate || '').trim();\n\nif (!word) throw new Error('word is required');\nif (!translate) throw new Error('translate is required');\n\nconst now = new Date();\n\nreturn [{ json: {\n  word: word.toLowerCase(),\n  translate,\n  transcript: (body.transcript || '').replace(/^\\/|\\/$/g, ''),\n  partOfSpeech: body.partOfSpeech || '',\n  level: body.level || '',\n  stage: 'new',\n  trainDate: now\n} }];"
+        "jsCode": "const body = $input.first().json.body || {};\nconst word = (body.word || '').trim();\nconst translate = (body.translate || '').trim();\n\nif (!word) throw new Error('word is required');\nif (!translate) throw new Error('translate is required');\n\nreturn [{ json: {\n  word: word.toLowerCase(),\n  translate,\n  transcript: (body.transcript || '').replace(/^\\/|\\/$/g, ''),\n  partOfSpeech: body.partOfSpeech || '',\n  level: body.level || '',\n  stage: 'new',\n  trainDate: new Date().toISOString(),\n  code: ''\n} }];"
       }
     },
     {
@@ -35,7 +35,7 @@
       "parameters": {
         "operation": "insert",
         "collection": "words",
-        "fields": "={{ JSON.stringify($json) }}"
+        "fields": "word,translate,transcript,partOfSpeech,level,stage,trainDate,code"
       },
       "credentials": {
         "mongoDb": {
