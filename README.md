@@ -147,10 +147,40 @@ scp -i "c:/projects/aijarvis/.ssh_hetzner_key" "c:/projects/aijarvis/webapp/inde
 ### n8n Workflows
 - **API - Get Today's Digests** (ID: 2EKNwlPxAZoJQnrQ) - webhook: `https://n8n.aimediaflow.net/webhook/get-digests`
 - **Smart Funnel: AI Digest Generator** (ID: KLtGtt6CkqkMln91) - генерация дайджестов
+- **API - Translate Word** (ID: nCQr8FmPFzqGWoVb) - webhook: `https://n8n.aimediaflow.net/webhook/translate-word?word=...`
 
 ### DataTables (n8n)
 - **DailyDigests** (ID: JnVde1xTjaVHMlMx) - хранение дайджестов
 - **News** (ID: MWNgETzBSi4cAIFo) - новости для дайджестов
+
+### Управление workflow через n8n API
+
+API ключ хранится в `.mcp.json` → `N8N_API_KEY`.
+
+**Активировать workflow:**
+```bash
+curl -X POST "https://n8n.aimediaflow.net/api/v1/workflows/{WORKFLOW_ID}/activate" \
+  -H "X-N8N-API-KEY: <api_key>"
+```
+
+**Деактивировать workflow:**
+```bash
+curl -X POST "https://n8n.aimediaflow.net/api/v1/workflows/{WORKFLOW_ID}/deactivate" \
+  -H "X-N8N-API-KEY: <api_key>"
+```
+
+**Важно:** После изменения workflow через API/MCP (`n8n_update_full_workflow`) нужно **обязательно** деактивировать и активировать workflow, иначе webhook не перерегистрируется:
+```bash
+API_KEY="..."
+WF_ID="nCQr8FmPFzqGWoVb"
+curl -X POST "https://n8n.aimediaflow.net/api/v1/workflows/$WF_ID/deactivate" -H "X-N8N-API-KEY: $API_KEY"
+sleep 2
+curl -X POST "https://n8n.aimediaflow.net/api/v1/workflows/$WF_ID/activate" -H "X-N8N-API-KEY: $API_KEY"
+```
+
+**Причина:** n8n регистрирует webhooks при активации. При обновлении workflow через API регистрация не происходит автоматически. Webhooks регистрируются только при: старте n8n, активации workflow.
+
+**Примечание для Git Bash на Windows:** переменные окружения с JWT токенами могут не передаваться через `$VAR` — вставляйте значение напрямую в команду.
 
 ## Troubleshooting
 

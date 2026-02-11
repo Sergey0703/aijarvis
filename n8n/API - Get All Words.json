@@ -43,7 +43,7 @@
       "typeVersion": 2,
       "position": [448, 0],
       "parameters": {
-        "jsCode": "const words = $('MongoDB: Get All Words').all().map(item => {\n  const data = item.json;\n  const wordLower = data.word.toLowerCase();\n  const audioUrl = `https://vocab.aimediaflow.net/audio/${encodeURIComponent(wordLower)}.mp3`;\n  \n  // Format trainDate as date only (no time)\n  let trainDateFormatted = '';\n  if (data.trainDate) {\n    const d = new Date(data.trainDate);\n    trainDateFormatted = d.toISOString().split('T')[0]; // YYYY-MM-DD\n  }\n  \n  return {\n    _id: data._id,\n    word: data.word,\n    translate: data.translate,\n    transcript: data.transcript || '',\n    audio: audioUrl,\n    partOfSpeech: data.partOfSpeech || '',\n    level: data.level || '',\n    trainDate: trainDateFormatted\n  };\n});\n\nreturn [{ json: { \n  words: words,\n  total: words.length\n} }];"
+        "jsCode": "const words = $('MongoDB: Get All Words').all().map(item => {\n  const data = item.json;\n  const wordLower = data.word.toLowerCase();\n  const audioUrl = `https://vocab.aimediaflow.net/audio/${encodeURIComponent(wordLower)}.mp3`;\n  \n  // Format trainDate as date only (no time)\n  let trainDateFormatted = '';\n  if (data.trainDate) {\n    const d = new Date(data.trainDate);\n    trainDateFormatted = d.toISOString().split('T')[0]; // YYYY-MM-DD\n  }\n  \n  return {\n    _id: data._id,\n    word: data.word,\n    translate: data.translate,\n    transcript: data.transcript || '',\n    audio: audioUrl,\n    partOfSpeech: data.partOfSpeech || '',\n    level: data.level || '',\n    trainDate: trainDateFormatted,\n    stage: data.stage || 'new'\n  };\n});\n\nreturn [{ json: { \n  words: words,\n  total: words.length\n} }];"
       }
     },
     {
