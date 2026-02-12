@@ -3547,20 +3547,20 @@
                     html += `<div class="vocab-letter-divider">${firstLetter}</div>`;
                     lastLetter = firstLetter;
                 }
-                const hasEnAudio = w.sound && !w.sound.startsWith('[sound:');
+                const safe = (w.word || '').toLowerCase().replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                const enAudioUrl = `https://vocab.aimediaflow.net/audio/${safe}.mp3`;
                 const hasRuAudio = w.soundRu && !w.soundRu.startsWith('[sound:');
-                const enAudioAttr = hasEnAudio ? `data-vocab-audio="${escapeHtml(w.sound)}"` : '';
                 const ruAudioAttr = hasRuAudio ? `data-vocab-audio-ru="${escapeHtml(w.soundRu)}"` : '';
                 const levelBadge = w.level ? `<span class="vocab-level-badge">${escapeHtml(w.level)}</span>` : '';
                 html += `
                 <div class="vocab-word-item">
                     <div class="vocab-word-main">
-                        <div class="vocab-word-en ${hasEnAudio ? 'vocab-has-audio' : ''}" ${enAudioAttr}>${escapeHtml(w.word || '')} ${levelBadge}</div>
+                        <div class="vocab-word-en vocab-has-audio" data-vocab-audio="${enAudioUrl}">${escapeHtml(w.word || '')} ${levelBadge}</div>
                         ${w.transcript ? `<div class="vocab-word-transcript">${escapeHtml(w.transcript)}</div>` : ''}
                         <div class="vocab-word-ru ${hasRuAudio ? 'vocab-has-audio' : ''}" ${ruAudioAttr}>${escapeHtml(w.translate || '')}</div>
                     </div>
                     <div class="vocab-word-actions">
-                        ${hasEnAudio ? `<button class="vocab-audio-btn" data-vocab-audio="${escapeHtml(w.sound)}" title="Play EN">🔊</button>` : ''}
+                        <button class="vocab-audio-btn" data-vocab-audio="${enAudioUrl}" title="Play EN">🔊</button>
                         <button class="vocab-edit-btn" data-vocab-edit="${escapeHtml(w._id || '')}" title="Edit">✏️</button>
                     </div>
                 </div>`;
