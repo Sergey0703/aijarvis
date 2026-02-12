@@ -862,7 +862,7 @@
 
         /* Repeat button */
         .repeat-btn {
-            background: #ff9500;
+            background: #c7c7cc;
             color: white;
             border: none;
             border-radius: 50%;
@@ -882,7 +882,7 @@
         }
 
         .repeat-btn.sent {
-            background: #34c759;
+            background: #ff9500;
         }
 
         .repeat-btn.sending {
@@ -3306,7 +3306,7 @@
                             <button class="repeat-btn ${isRepeat ? 'sent' : ''}" id="dict-repeat-btn-${index}"
                                     data-action="mark-repeat" data-word-id="${escapeHtml(wordId)}" data-widx="${index}"
                                     title="Mark for repeat">
-                                ${isRepeat ? '✓' : '🔄'}
+                                ${isRepeat ? '🔁' : '🔄'}
                             </button>
                         </div>
                         <button class="audio-btn" id="dict-audio-btn-${index}"
@@ -3551,7 +3551,7 @@
 
                 btn.classList.remove('sending');
                 btn.classList.add('sent');
-                btn.textContent = '✓';
+                btn.textContent = '🔁';
 
                 // Track this word as marked for repeat
                 markedAsRepeat.add(wordId);
