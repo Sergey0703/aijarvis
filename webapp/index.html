@@ -1327,6 +1327,273 @@
             border: 2px solid var(--tg-theme-button-color);
             background: color-mix(in srgb, var(--tg-theme-button-color) 10%, var(--tg-theme-bg-color));
         }
+
+        /* My Vocab Page */
+        .vocab-search-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .vocab-search-input {
+            flex: 1;
+            height: 38px;
+            padding: 0 12px;
+            border: 1px solid var(--tg-theme-hint-color);
+            border-radius: 10px;
+            font-size: 15px;
+            background: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            outline: none;
+        }
+
+        .vocab-search-input:focus {
+            border-color: var(--tg-theme-button-color);
+        }
+
+        .vocab-add-btn {
+            height: 38px;
+            padding: 0 14px;
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .vocab-word-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .vocab-word-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--tg-theme-secondary-bg-color);
+            gap: 10px;
+        }
+
+        .vocab-word-item:last-child {
+            border-bottom: none;
+        }
+
+        .vocab-word-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .vocab-word-en {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--tg-theme-text-color);
+        }
+
+        .vocab-word-transcript {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+            margin-top: 1px;
+        }
+
+        .vocab-word-ru {
+            font-size: 13px;
+            color: var(--tg-theme-text-color);
+            opacity: 0.75;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .vocab-word-actions {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .vocab-audio-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 8px;
+            background: var(--tg-theme-secondary-bg-color);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .vocab-edit-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 8px;
+            background: var(--tg-theme-secondary-bg-color);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .vocab-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 12px 0 4px;
+        }
+
+        /* My Vocab Modals */
+        .vocab-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .vocab-modal-overlay.visible {
+            display: flex;
+        }
+
+        .vocab-modal {
+            background: var(--tg-theme-bg-color);
+            border-radius: 16px 16px 0 0;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 16px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+        }
+
+        .vocab-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .vocab-modal-header h3 {
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .vocab-modal-close {
+            background: var(--tg-theme-secondary-bg-color);
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            font-size: 14px;
+            cursor: pointer;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .vocab-modal-word {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--tg-theme-button-color);
+            margin-bottom: 12px;
+        }
+
+        .vocab-field-label {
+            display: block;
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+            margin-bottom: 4px;
+            margin-top: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .vocab-field-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--tg-theme-hint-color);
+            border-radius: 10px;
+            font-size: 15px;
+            background: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            outline: none;
+            resize: none;
+            font-family: inherit;
+        }
+
+        .vocab-field-input:focus {
+            border-color: var(--tg-theme-button-color);
+        }
+
+        .vocab-modal-body {
+            padding-bottom: 4px;
+        }
+
+        .vocab-modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .vocab-add-status {
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--tg-theme-hint-color);
+            min-height: 20px;
+        }
+
+        .vocab-letter-divider {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--tg-theme-hint-color);
+            padding: 8px 0 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--tg-theme-secondary-bg-color);
+            margin-bottom: 2px;
+        }
+
+        .vocab-level-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--tg-theme-button-color);
+            background: color-mix(in srgb, var(--tg-theme-button-color) 12%, var(--tg-theme-bg-color));
+            border-radius: 4px;
+            padding: 1px 5px;
+            vertical-align: middle;
+            margin-left: 4px;
+        }
+
+        .vocab-has-audio {
+            cursor: pointer;
+        }
+
+        .vocab-has-audio:active {
+            opacity: 0.6;
+        }
+
+        .vocab-word-en.vocab-has-audio::after {
+            content: ' 🔊';
+            font-size: 12px;
+            opacity: 0.5;
+        }
+
+        .vocab-word-ru.vocab-has-audio::after {
+            content: ' 🔊';
+            font-size: 11px;
+            opacity: 0.4;
+        }
     </style>
 </head>
 <body>
@@ -1355,6 +1622,10 @@
         <div class="menu-item" data-action="navigate" data-page="quiz">
             <span class="menu-item-icon">🧠</span>
             <span class="menu-item-text">Quiz</span>
+        </div>
+        <div class="menu-item" data-action="navigate" data-page="myvocab">
+            <span class="menu-item-icon">✏️</span>
+            <span class="menu-item-text">My Vocab</span>
         </div>
         <div class="menu-item" data-action="navigate" data-page="podcasts">
             <span class="menu-item-icon">🎧</span>
@@ -1408,6 +1679,14 @@
                 <div class="home-menu-content">
                     <div class="home-menu-title">Quiz</div>
                     <div class="home-menu-desc">Test your knowledge with quizzes</div>
+                </div>
+            </button>
+
+            <button class="home-menu-btn" data-action="navigate" data-page="myvocab">
+                <div class="home-menu-icon">✏️</div>
+                <div class="home-menu-content">
+                    <div class="home-menu-title">My Vocab</div>
+                    <div class="home-menu-desc">Browse, search and edit all your words</div>
                 </div>
             </button>
 
@@ -1563,6 +1842,106 @@
         <button class="refresh-btn" id="quizRefreshBtn" data-action="refresh-quiz">&#x21bb;</button>
     </div>
 
+    <!-- My Vocab Page -->
+    <div class="page" id="myvocabPage">
+        <div class="header">
+            <div class="header-left">
+                <button class="burger-btn" data-action="toggle-menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>My Vocab</h1>
+            </div>
+            <span class="word-count" id="myvocabWordCount"></span>
+        </div>
+
+        <div class="sticky-header">
+            <div class="vocab-search-row">
+                <input type="text" class="vocab-search-input" id="vocabSearchInput" placeholder="Search words..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <button class="vocab-add-btn" data-action="vocab-add-open">+ Add</button>
+            </div>
+        </div>
+
+        <div id="myvocabContent">
+            <div class="loading">Loading vocabulary...</div>
+        </div>
+
+        <div class="vocab-pagination" id="vocabPagination" style="display:none;">
+            <button class="pagination-btn" id="vocabPrevBtn" data-action="vocab-prev">‹ Prev</button>
+            <span class="pagination-info" id="vocabPaginationInfo">Page 1 of 1</span>
+            <button class="pagination-btn" id="vocabNextBtn" data-action="vocab-next">Next ›</button>
+        </div>
+
+        <button class="refresh-btn" id="myvocabRefreshBtn" data-action="refresh-myvocab">&#x21bb;</button>
+    </div>
+
+    <!-- My Vocab Edit Modal -->
+    <div class="vocab-modal-overlay" id="vocabEditModal">
+        <div class="vocab-modal">
+            <div class="vocab-modal-header">
+                <h3 id="vocabModalTitle">Edit Word</h3>
+                <button class="vocab-modal-close" data-action="vocab-modal-close">✕</button>
+            </div>
+            <div class="vocab-modal-body">
+                <div class="vocab-modal-word" id="vocabModalWord"></div>
+                <label class="vocab-field-label">Translation</label>
+                <textarea class="vocab-field-input" id="vocabModalTranslate" rows="2" placeholder="Translation..."></textarea>
+                <label class="vocab-field-label">Transcript</label>
+                <input type="text" class="vocab-field-input" id="vocabModalTranscript" placeholder="[trænˈskrɪpt]">
+                <label class="vocab-field-label">Part of Speech</label>
+                <input type="text" class="vocab-field-input" id="vocabModalPos" placeholder="noun, verb, adj...">
+                <label class="vocab-field-label">Level</label>
+                <select class="vocab-field-input" id="vocabModalLevel">
+                    <option value="">— not set —</option>
+                    <option value="A1">A1 — Beginner</option>
+                    <option value="A2">A2 — Elementary</option>
+                    <option value="B1">B1 — Intermediate</option>
+                    <option value="B2">B2 — Upper-Intermediate</option>
+                    <option value="C1">C1 — Advanced</option>
+                </select>
+            </div>
+            <div class="vocab-modal-actions">
+                <button class="btn-cancel" data-action="vocab-modal-close">Cancel</button>
+                <button class="btn-confirm" data-action="vocab-modal-save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Vocab Add Word Modal -->
+    <div class="vocab-modal-overlay" id="vocabAddModal">
+        <div class="vocab-modal">
+            <div class="vocab-modal-header">
+                <h3>Add New Word</h3>
+                <button class="vocab-modal-close" data-action="vocab-add-close">✕</button>
+            </div>
+            <div class="vocab-modal-body">
+                <label class="vocab-field-label">English Word *</label>
+                <input type="text" class="vocab-field-input" id="vocabAddWord" placeholder="e.g. eloquent" autocorrect="off" autocapitalize="off">
+                <label class="vocab-field-label">Translation (RU) *</label>
+                <textarea class="vocab-field-input" id="vocabAddTranslate" rows="2" placeholder="Перевод..."></textarea>
+                <label class="vocab-field-label">Transcript</label>
+                <input type="text" class="vocab-field-input" id="vocabAddTranscript" placeholder="[ˈɛləkwənt]">
+                <label class="vocab-field-label">Part of Speech</label>
+                <input type="text" class="vocab-field-input" id="vocabAddPos" placeholder="noun, verb, adj...">
+                <label class="vocab-field-label">Level</label>
+                <select class="vocab-field-input" id="vocabAddLevel">
+                    <option value="">— not set —</option>
+                    <option value="A1">A1 — Beginner</option>
+                    <option value="A2">A2 — Elementary</option>
+                    <option value="B1">B1 — Intermediate</option>
+                    <option value="B2">B2 — Upper-Intermediate</option>
+                    <option value="C1">C1 — Advanced</option>
+                </select>
+                <div class="vocab-add-status" id="vocabAddStatus"></div>
+            </div>
+            <div class="vocab-modal-actions">
+                <button class="btn-cancel" data-action="vocab-add-close">Cancel</button>
+                <button class="btn-confirm" id="vocabAddSaveBtn" data-action="vocab-add-save">Save + Generate Audio</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Podcasts Page -->
     <div class="page" id="podcastsPage">
         <div class="header">
@@ -1632,6 +2011,9 @@
         const DIGEST_API_URL = 'https://n8n.aimediaflow.net/webhook/get-digests';
         const DICTIONARY_API_URL = 'https://n8n.aimediaflow.net/webhook/words-all';
         const MARK_REPEAT_API_URL = 'https://n8n.aimediaflow.net/webhook/mark-repeat';
+        const VOCAB_SEARCH_API_URL = 'https://n8n.aimediaflow.net/webhook/vocab-search';
+        const UPDATE_WORD_API_URL = 'https://n8n.aimediaflow.net/webhook/update-word';
+        const SAVE_WORD_API_URL = 'https://n8n.aimediaflow.net/webhook/save-word';
         const QUIZ_API_URL = 'https://n8n.aimediaflow.net/webhook/quiz-words';
         const UPDATE_WORD_STAGE_API_URL = 'https://n8n.aimediaflow.net/webhook/update-word-stage';
         const MARK_NEW_BATCH_API_URL = 'https://n8n.aimediaflow.net/webhook/mark-new-batch';
@@ -2685,6 +3067,31 @@
             } else if (action === 'load-new-batch') {
                 loadNewBatch();
                 return true;
+            } else if (action === 'refresh-myvocab') {
+                loadMyVocab(true);
+                return true;
+            } else if (action === 'vocab-add-open') {
+                openVocabAddModal();
+                return true;
+            } else if (action === 'vocab-add-close') {
+                closeVocabAddModal();
+                return true;
+            } else if (action === 'vocab-add-save') {
+                saveVocabAdd();
+                return true;
+            } else if (action === 'vocab-modal-close') {
+                closeVocabEditModal();
+                return true;
+            } else if (action === 'vocab-modal-save') {
+                saveVocabEdit();
+                return true;
+            } else if (action === 'vocab-prev') {
+                if (vocabCurrentPage > 1) { vocabCurrentPage--; renderMyVocab(); }
+                return true;
+            } else if (action === 'vocab-next') {
+                const totalPages = Math.ceil(vocabFilteredWords.length / VOCAB_PAGE_SIZE);
+                if (vocabCurrentPage < totalPages) { vocabCurrentPage++; renderMyVocab(); }
+                return true;
             } else if (action === 'refresh-podcasts') {
                 loadPodcasts();
                 return true;
@@ -2797,6 +3204,9 @@
                 document.getElementById('quizPage').classList.add('active');
                 // Always reload quiz to get fresh data
                 loadQuiz();
+            } else if (page === 'myvocab') {
+                document.getElementById('myvocabPage').classList.add('active');
+                loadMyVocab();
             } else if (page === 'podcasts') {
                 document.getElementById('podcastsPage').classList.add('active');
                 // Always reload podcasts to get fresh data
@@ -3062,6 +3472,276 @@
             const confirm = document.getElementById('wordSaveConfirm');
             if (confirm) confirm.classList.remove('visible');
         }
+
+        // ========== MY VOCAB ==========
+        let vocabAllWords = [];
+        let vocabFilteredWords = [];
+        let vocabCurrentPage = 1;
+        const VOCAB_PAGE_SIZE = 50;
+        let vocabSearchTimeout = null;
+        let vocabEditingWordId = null;
+
+        async function loadMyVocab(forceReload) {
+            const content = document.getElementById('myvocabContent');
+            const refreshBtn = document.getElementById('myvocabRefreshBtn');
+            if (refreshBtn) refreshBtn.classList.add('spinning');
+            content.innerHTML = '<div class="loading">Loading vocabulary...</div>';
+
+            try {
+                const response = await fetch(VOCAB_SEARCH_API_URL);
+                if (!response.ok) throw new Error('Failed to fetch');
+                const data = await response.json();
+                vocabAllWords = data.words || [];
+                vocabCurrentPage = 1;
+                const searchVal = document.getElementById('vocabSearchInput')?.value || '';
+                applyVocabFilter(searchVal);
+            } catch (e) {
+                content.innerHTML = '<div class="loading">Error loading vocabulary</div>';
+            } finally {
+                if (refreshBtn) refreshBtn.classList.remove('spinning');
+            }
+        }
+
+        function applyVocabFilter(query) {
+            const q = query.trim().toLowerCase();
+            if (q.length === 0) {
+                vocabFilteredWords = vocabAllWords;
+            } else {
+                vocabFilteredWords = vocabAllWords.filter(w =>
+                    (w.word || '').toLowerCase().includes(q) ||
+                    (w.translate || '').toLowerCase().includes(q)
+                );
+            }
+            vocabCurrentPage = 1;
+            renderMyVocab();
+        }
+
+        function renderMyVocab() {
+            const content = document.getElementById('myvocabContent');
+            const pagination = document.getElementById('vocabPagination');
+            const info = document.getElementById('vocabPaginationInfo');
+            const prevBtn = document.getElementById('vocabPrevBtn');
+            const nextBtn = document.getElementById('vocabNextBtn');
+            const countEl = document.getElementById('myvocabWordCount');
+
+            const total = vocabFilteredWords.length;
+            const totalPages = Math.max(1, Math.ceil(total / VOCAB_PAGE_SIZE));
+            if (vocabCurrentPage > totalPages) vocabCurrentPage = totalPages;
+            const start = (vocabCurrentPage - 1) * VOCAB_PAGE_SIZE;
+            const pageWords = vocabFilteredWords.slice(start, start + VOCAB_PAGE_SIZE);
+
+            if (countEl) countEl.textContent = total + ' words';
+
+            if (total === 0) {
+                content.innerHTML = '<div class="loading">No words found</div>';
+                if (pagination) pagination.style.display = 'none';
+                return;
+            }
+
+            // Group by first letter
+            let html = '<div class="vocab-word-list">';
+            let lastLetter = null;
+            for (const w of pageWords) {
+                const firstLetter = (w.word || '?')[0].toUpperCase();
+                if (firstLetter !== lastLetter) {
+                    html += `<div class="vocab-letter-divider">${firstLetter}</div>`;
+                    lastLetter = firstLetter;
+                }
+                const hasEnAudio = w.sound && !w.sound.startsWith('[sound:');
+                const hasRuAudio = w.soundRu && !w.soundRu.startsWith('[sound:');
+                const enAudioAttr = hasEnAudio ? `data-vocab-audio="${escapeHtml(w.sound)}"` : '';
+                const ruAudioAttr = hasRuAudio ? `data-vocab-audio-ru="${escapeHtml(w.soundRu)}"` : '';
+                const levelBadge = w.level ? `<span class="vocab-level-badge">${escapeHtml(w.level)}</span>` : '';
+                html += `
+                <div class="vocab-word-item">
+                    <div class="vocab-word-main">
+                        <div class="vocab-word-en ${hasEnAudio ? 'vocab-has-audio' : ''}" ${enAudioAttr}>${escapeHtml(w.word || '')} ${levelBadge}</div>
+                        ${w.transcript ? `<div class="vocab-word-transcript">${escapeHtml(w.transcript)}</div>` : ''}
+                        <div class="vocab-word-ru ${hasRuAudio ? 'vocab-has-audio' : ''}" ${ruAudioAttr}>${escapeHtml(w.translate || '')}</div>
+                    </div>
+                    <div class="vocab-word-actions">
+                        ${hasEnAudio ? `<button class="vocab-audio-btn" data-vocab-audio="${escapeHtml(w.sound)}" title="Play EN">🔊</button>` : ''}
+                        <button class="vocab-edit-btn" data-vocab-edit="${escapeHtml(w._id || '')}" title="Edit">✏️</button>
+                    </div>
+                </div>`;
+            }
+            html += '</div>';
+            content.innerHTML = html;
+
+            // Bind EN audio (click on word)
+            content.querySelectorAll('[data-vocab-audio]').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const url = el.getAttribute('data-vocab-audio');
+                    const audio = new Audio(url);
+                    audio.play().catch(() => {});
+                });
+            });
+
+            // Bind RU audio (click on translate)
+            content.querySelectorAll('[data-vocab-audio-ru]').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const url = el.getAttribute('data-vocab-audio-ru');
+                    const audio = new Audio(url);
+                    audio.play().catch(() => {});
+                });
+            });
+
+            // Bind edit buttons
+            content.querySelectorAll('[data-vocab-edit]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-vocab-edit');
+                    const word = vocabFilteredWords.find(w => w._id === id);
+                    if (word) openVocabEditModal(word);
+                });
+            });
+
+            // Pagination controls
+            if (pagination) {
+                pagination.style.display = totalPages > 1 ? 'flex' : 'none';
+                if (info) info.textContent = `Page ${vocabCurrentPage} of ${totalPages}`;
+                if (prevBtn) prevBtn.disabled = vocabCurrentPage <= 1;
+                if (nextBtn) nextBtn.disabled = vocabCurrentPage >= totalPages;
+            }
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function openVocabEditModal(word) {
+            vocabEditingWordId = word._id;
+            document.getElementById('vocabModalTitle').textContent = 'Edit Word';
+            document.getElementById('vocabModalWord').textContent = word.word || '';
+            document.getElementById('vocabModalTranslate').value = word.translate || '';
+            document.getElementById('vocabModalTranscript').value = word.transcript || '';
+            document.getElementById('vocabModalPos').value = word.partOfSpeech || '';
+            document.getElementById('vocabModalLevel').value = word.level || '';
+            document.getElementById('vocabEditModal').classList.add('visible');
+        }
+
+        function closeVocabEditModal() {
+            document.getElementById('vocabEditModal').classList.remove('visible');
+            vocabEditingWordId = null;
+        }
+
+        async function saveVocabEdit() {
+            if (!vocabEditingWordId) return;
+            const translate = document.getElementById('vocabModalTranslate').value.trim();
+            const transcript = document.getElementById('vocabModalTranscript').value.trim();
+            const partOfSpeech = document.getElementById('vocabModalPos').value.trim();
+            const level = document.getElementById('vocabModalLevel').value.trim();
+            const saveBtn = document.querySelector('#vocabEditModal .btn-confirm');
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+
+            try {
+                const response = await fetch(UPDATE_WORD_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wordId: vocabEditingWordId, translate, transcript, partOfSpeech, level })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    // Update local data
+                    const idx = vocabAllWords.findIndex(w => w._id === vocabEditingWordId);
+                    if (idx >= 0) {
+                        vocabAllWords[idx].translate = translate;
+                        vocabAllWords[idx].transcript = transcript;
+                        vocabAllWords[idx].partOfSpeech = partOfSpeech;
+                        vocabAllWords[idx].level = level;
+                    }
+                    const idx2 = vocabFilteredWords.findIndex(w => w._id === vocabEditingWordId);
+                    if (idx2 >= 0) {
+                        vocabFilteredWords[idx2].translate = translate;
+                        vocabFilteredWords[idx2].transcript = transcript;
+                        vocabFilteredWords[idx2].partOfSpeech = partOfSpeech;
+                        vocabFilteredWords[idx2].level = level;
+                    }
+                    closeVocabEditModal();
+                    renderMyVocab();
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                } else {
+                    alert('Error saving changes');
+                }
+            } catch (e) {
+                alert('Error saving changes');
+            } finally {
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
+            }
+        }
+
+        function openVocabAddModal() {
+            document.getElementById('vocabAddWord').value = '';
+            document.getElementById('vocabAddTranslate').value = '';
+            document.getElementById('vocabAddTranscript').value = '';
+            document.getElementById('vocabAddPos').value = '';
+            document.getElementById('vocabAddLevel').value = '';
+            document.getElementById('vocabAddStatus').textContent = '';
+            const saveBtn = document.getElementById('vocabAddSaveBtn');
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save + Generate Audio'; }
+            document.getElementById('vocabAddModal').classList.add('visible');
+            setTimeout(() => document.getElementById('vocabAddWord').focus(), 100);
+        }
+
+        function closeVocabAddModal() {
+            document.getElementById('vocabAddModal').classList.remove('visible');
+        }
+
+        async function saveVocabAdd() {
+            const word = document.getElementById('vocabAddWord').value.trim();
+            const translate = document.getElementById('vocabAddTranslate').value.trim();
+            const transcript = document.getElementById('vocabAddTranscript').value.trim();
+            const partOfSpeech = document.getElementById('vocabAddPos').value.trim();
+            const level = document.getElementById('vocabAddLevel').value.trim();
+            const statusEl = document.getElementById('vocabAddStatus');
+            const saveBtn = document.getElementById('vocabAddSaveBtn');
+
+            if (!word || !translate) {
+                statusEl.textContent = 'Please fill in Word and Translation';
+                statusEl.style.color = '#ff3b30';
+                return;
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            statusEl.textContent = 'Saving word and generating audio...';
+            statusEl.style.color = 'var(--tg-theme-hint-color)';
+
+            try {
+                const response = await fetch(SAVE_WORD_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ word, translate, transcript, partOfSpeech, level, example: '' })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    statusEl.textContent = '✅ Saved! Audio generated.';
+                    statusEl.style.color = '#34c759';
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                    setTimeout(() => {
+                        closeVocabAddModal();
+                        loadMyVocab(true);
+                    }, 1200);
+                } else {
+                    statusEl.textContent = 'Error: ' + (result.error || 'Unknown error');
+                    statusEl.style.color = '#ff3b30';
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save + Generate Audio';
+                }
+            } catch (e) {
+                statusEl.textContent = 'Network error';
+                statusEl.style.color = '#ff3b30';
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save + Generate Audio';
+            }
+        }
+        // ========== END MY VOCAB ==========
 
         // Audio Player functions
         let playerUpdateInterval = null;
@@ -5107,6 +5787,17 @@
                 }
             }
         }, true);
+
+        // Vocab search input handler
+        const vocabSearchInput = document.getElementById('vocabSearchInput');
+        if (vocabSearchInput) {
+            vocabSearchInput.addEventListener('input', () => {
+                clearTimeout(vocabSearchTimeout);
+                vocabSearchTimeout = setTimeout(() => {
+                    applyVocabFilter(vocabSearchInput.value);
+                }, 300);
+            });
+        }
 
         // Load words on start
         loadWords();
