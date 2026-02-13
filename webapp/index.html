@@ -1575,18 +1575,37 @@
             margin-left: 4px;
         }
 
+        .vocab-word-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 3px;
+        }
+
+        .vocab-stage-badge {
+            font-size: 10px;
+            font-weight: 600;
+            border-radius: 4px;
+            padding: 1px 5px;
+        }
+
+        .vocab-stage-new       { color: #8e8e93; background: #f2f2f7; }
+        .vocab-stage-checked   { color: #ff9500; background: #fff3e0; }
+        .vocab-stage-repeat    { color: #ff9500; background: #fff3e0; }
+        .vocab-stage-learning  { color: #007aff; background: #e3f0ff; }
+        .vocab-stage-learned   { color: #34c759; background: #e6f9ec; }
+
+        .vocab-train-date {
+            font-size: 10px;
+            color: var(--tg-theme-hint-color);
+        }
+
         .vocab-has-audio {
             cursor: pointer;
         }
 
         .vocab-has-audio:active {
             opacity: 0.6;
-        }
-
-        .vocab-word-en.vocab-has-audio::after {
-            content: ' 🔊';
-            font-size: 12px;
-            opacity: 0.5;
         }
 
         .vocab-word-ru.vocab-has-audio::after {
@@ -3552,12 +3571,15 @@
                 const hasRuAudio = w.soundRu && !w.soundRu.startsWith('[sound:');
                 const ruAudioAttr = hasRuAudio ? `data-vocab-audio-ru="${escapeHtml(w.soundRu)}"` : '';
                 const levelBadge = w.level ? `<span class="vocab-level-badge">${escapeHtml(w.level)}</span>` : '';
+                const stageBadge = `<span class="vocab-stage-badge vocab-stage-${escapeHtml(w.stage || 'new')}">${escapeHtml(w.stage || 'new')}</span>`;
+                const trainDateStr = w.trainDate ? new Date(w.trainDate).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit', year:'2-digit'}) : '';
                 html += `
                 <div class="vocab-word-item">
                     <div class="vocab-word-main">
-                        <div class="vocab-word-en vocab-has-audio" data-vocab-audio="${enAudioUrl}">${escapeHtml(w.word || '')} ${levelBadge}</div>
+                        <div class="vocab-word-en">${escapeHtml(w.word || '')} ${levelBadge}</div>
                         ${w.transcript ? `<div class="vocab-word-transcript">${escapeHtml(w.transcript)}</div>` : ''}
-                        <div class="vocab-word-ru ${hasRuAudio ? 'vocab-has-audio' : ''}" ${ruAudioAttr}>${escapeHtml(w.translate || '')}</div>
+                        <div class="vocab-word-ru vocab-has-audio" data-vocab-audio-ru="${enAudioUrl}">${escapeHtml(w.translate || '')}</div>
+                        <div class="vocab-word-meta">${stageBadge}${trainDateStr ? `<span class="vocab-train-date">${trainDateStr}</span>` : ''}</div>
                     </div>
                     <div class="vocab-word-actions">
                         <button class="vocab-audio-btn" data-vocab-audio="${enAudioUrl}" title="Play EN">🔊</button>
