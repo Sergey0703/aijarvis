@@ -4597,6 +4597,7 @@
                         const xhr = new XMLHttpRequest();
                         xhr.timeout = 5000;
                         xhr.open('GET', url);
+                        xhr.setRequestHeader('X-App-Token', APP_TOKEN);
                         xhr.onload = function() {
                             if (xhr.status >= 200 && xhr.status < 300) {
                                 console.log('[QUIZ] Word stage updated successfully:', currentWord.word);
@@ -5125,6 +5126,7 @@
                         }
                     };
                     xhr.open('GET', url);
+                    xhr.setRequestHeader('X-App-Token', APP_TOKEN);
                     xhr.send();
                 });
 
@@ -5747,6 +5749,7 @@
                     }
                 };
                 xhr.open('GET', url);
+                xhr.setRequestHeader('X-App-Token', APP_TOKEN);
                 xhr.send();
 
             } catch (error) {
