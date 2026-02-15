@@ -2026,6 +2026,18 @@
     </div>
 
     <script>
+        const APP_TOKEN = 'c00173f9c8dd40fbe52bae04d445307b5a544a9ba47c3d052541fbb92d6a7301';
+        const API_HEADERS = { 'Content-Type': 'application/json', 'X-App-Token': APP_TOKEN };
+
+        // Wrapper: GET with auth header
+        function apiFetch(url) {
+            return fetch(url, { headers: { 'X-App-Token': APP_TOKEN } });
+        }
+        // Wrapper: POST with auth header
+        function apiPost(url, body) {
+            return fetch(url, { method: 'POST', headers: API_HEADERS, body: JSON.stringify(body) });
+        }
+
         const API_URL = 'https://n8n.aimediaflow.net/webhook/words-repeat';
         const DIGEST_API_URL = 'https://n8n.aimediaflow.net/webhook/get-digests';
         const DICTIONARY_API_URL = 'https://n8n.aimediaflow.net/webhook/words-all';
@@ -2195,7 +2207,7 @@
 
             try {
                 const url = `${API_URL}?mode=grouped&page=${page}&daysPerPage=${daysPerPage}`;
-                const response = await fetch(url);
+                const response = await apiFetch(url);
                 if (!response.ok) throw new Error('Failed to fetch');
 
                 const data = await response.json();
@@ -2257,7 +2269,7 @@
             randomAutoplayIndexBoth = 0;
 
             try {
-                const response = await fetch(API_URL + '?mode=random');
+                const response = await apiFetch(API_URL + '?mode=random');
                 if (!response.ok) throw new Error('Failed to fetch');
 
                 const data = await response.json();
@@ -3245,7 +3257,7 @@
             content.innerHTML = '<div class="loading">Loading digest...</div>';
 
             try {
-                const response = await fetch(DIGEST_API_URL);
+                const response = await apiFetch(DIGEST_API_URL);
                 if (!response.ok) throw new Error('Failed to fetch');
 
                 const data = await response.json();
@@ -3412,7 +3424,7 @@
             }
 
             try {
-                const response = await fetch(`https://n8n.aimediaflow.net/webhook/translate-word?word=${encodeURIComponent(word)}`);
+                const response = await apiFetch(`https://n8n.aimediaflow.net/webhook/translate-word?word=${encodeURIComponent(word)}`);
                 const data = await response.json();
 
                 if (data.translate) {
@@ -3456,17 +3468,13 @@
             const d = lastTranslationData;
 
             try {
-                const response = await fetch('https://n8n.aimediaflow.net/webhook/save-word', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        word: d.word,
-                        translate: d.translate,
-                        transcript: d.transcript || '',
-                        partOfSpeech: d.partOfSpeech || '',
-                        level: '',
-                        example: d.example || ''
-                    })
+                const response = await apiPost('https://n8n.aimediaflow.net/webhook/save-word', {
+                    word: d.word,
+                    translate: d.translate,
+                    transcript: d.transcript || '',
+                    partOfSpeech: d.partOfSpeech || '',
+                    level: '',
+                    example: d.example || ''
                 });
                 const result = await response.json();
                 if (result.success) {
@@ -3507,7 +3515,7 @@
             content.innerHTML = '<div class="loading">Loading vocabulary...</div>';
 
             try {
-                const response = await fetch(VOCAB_SEARCH_API_URL);
+                const response = await apiFetch(VOCAB_SEARCH_API_URL);
                 if (!response.ok) throw new Error('Failed to fetch');
                 const data = await response.json();
                 vocabAllWords = data.words || [];
@@ -3663,11 +3671,7 @@
             if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
 
             try {
-                const response = await fetch(UPDATE_WORD_API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ wordId: vocabEditingWordId, translate, transcript, partOfSpeech, level })
-                });
+                const response = await apiPost(UPDATE_WORD_API_URL, { wordId: vocabEditingWordId, translate, transcript, partOfSpeech, level });
                 const result = await response.json();
                 if (result.success) {
                     // Update local data
@@ -3736,11 +3740,7 @@
             statusEl.style.color = 'var(--tg-theme-hint-color)';
 
             try {
-                const response = await fetch(SAVE_WORD_API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ word, translate, transcript, partOfSpeech, level, example: '' })
-                });
+                const response = await apiPost(SAVE_WORD_API_URL, { word, translate, transcript, partOfSpeech, level, example: '' });
                 const result = await response.json();
                 if (result.success) {
                     statusEl.textContent = '✅ Saved! Audio generated.';
@@ -3927,7 +3927,7 @@
             dictAutoplayIndexBoth = 0;
 
             try {
-                const response = await fetch(DICTIONARY_API_URL);
+                const response = await apiFetch(DICTIONARY_API_URL);
                 if (!response.ok) throw new Error('Failed to fetch');
 
                 const data = await response.json();
@@ -4241,13 +4241,7 @@
             }
 
             try {
-                const response = await fetch(MARK_REPEAT_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ wordId: wordId })
-                });
+                const response = await apiPost(MARK_REPEAT_API_URL, { wordId: wordId });
 
                 if (!response.ok) throw new Error('Failed to mark word');
 
@@ -4311,13 +4305,7 @@
             }
 
             try {
-                const response = await fetch(MARK_NEW_BATCH_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ wordIds: wordIdsToMark })
-                });
+                const response = await apiPost(MARK_NEW_BATCH_API_URL, { wordIds: wordIdsToMark });
 
                 if (!response.ok) throw new Error('Failed to mark words');
 
@@ -4375,7 +4363,7 @@
             content.innerHTML = '<div class="loading">Loading quiz words...</div>';
 
             try {
-                const response = await fetch(QUIZ_API_URL);
+                const response = await apiFetch(QUIZ_API_URL);
                 if (!response.ok) throw new Error('Failed to fetch');
 
                 const data = await response.json();
@@ -4663,7 +4651,7 @@
             const url = CHECK_TRANSCRIPTS_API_URL + '?urls=' + encodeURIComponent(audioUrls);
 
             try {
-                const response = await fetch(url);
+                const response = await apiFetch(url);
                 const data = await response.json();
                 podcastTranscripts = data;
                 console.log('Transcript availability:', data);
@@ -4705,6 +4693,7 @@
                         }
                     };
                     xhr.open('GET', PODCASTS_API_URL);
+                    xhr.setRequestHeader('X-App-Token', APP_TOKEN);
                     xhr.send();
                 });
 
