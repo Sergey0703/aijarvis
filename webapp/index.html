@@ -4757,17 +4757,17 @@
                 html += `
                     <div class="podcast-card">
                         <div class="podcast-header">
-                            <div class="podcast-date">${episode.date}</div>
+                            <div class="podcast-date">${escapeHtml(episode.date)}</div>
                             <div class="podcast-duration">${formattedDuration}</div>
                         </div>
-                        <div class="podcast-title">${episode.title}</div>
+                        <div class="podcast-title">${escapeHtml(episode.title)}</div>
                         <button class="podcast-show-description-btn"
                                 data-action="toggle-podcast-description"
                                 data-index="${index}">
                             ${showDescBtnText}
                         </button>
                         <div class="podcast-description ${descriptionClass}">
-                            ${episode.description || ''}
+                            ${escapeHtml(episode.description || '')}
                         </div>
 
                         ${(() => {
@@ -4899,7 +4899,6 @@
 
                 // Use audio proxy to avoid redirect issues on mobile
                 const proxiedUrl = AUDIO_PROXY_URL + '?url=' + encodeURIComponent(audioUrl) + '&token=' + APP_TOKEN;
-                console.log('Using proxy:', proxiedUrl);
 
                 // Set source and load
                 currentPodcastAudio.src = proxiedUrl;
@@ -5210,12 +5209,12 @@
                              class="transcript-segment"
                              style="padding: 8px 0; transition: background 0.2s ease, padding 0.2s ease;">
                         <span style="color: var(--tg-theme-hint-color); font-size: 12px; margin-right: 8px; font-weight: 500;">[${time}]</span>
-                        <span style="line-height: 1.6;">${seg.text.trim()}</span>
+                        <span style="line-height: 1.6;">${escapeHtml(seg.text.trim())}</span>
                     </div>`;
                 }).join('');
                 container.innerHTML = html;
             } else {
-                container.innerHTML = `<div style="white-space: pre-wrap; line-height: 1.6;">${transcript}</div>`;
+                container.innerHTML = `<div style="white-space: pre-wrap; line-height: 1.6;">${escapeHtml(transcript)}</div>`;
             }
         }
 
