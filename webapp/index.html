@@ -4898,7 +4898,7 @@
                 // DON'T render here - will render after play() succeeds
 
                 // Use audio proxy to avoid redirect issues on mobile
-                const proxiedUrl = AUDIO_PROXY_URL + '?url=' + encodeURIComponent(audioUrl);
+                const proxiedUrl = AUDIO_PROXY_URL + '?url=' + encodeURIComponent(audioUrl) + '&token=' + APP_TOKEN;
                 console.log('Using proxy:', proxiedUrl);
 
                 // Set source and load
@@ -5008,7 +5008,7 @@
             currentPodcastAudio = new Audio();
             currentPodcastAudio.preload = 'metadata';
 
-            const proxiedUrl = AUDIO_PROXY_URL + '?url=' + encodeURIComponent(audioUrl);
+            const proxiedUrl = AUDIO_PROXY_URL + '?url=' + encodeURIComponent(audioUrl) + '&token=' + APP_TOKEN;
             currentPodcastAudio.src = proxiedUrl;
             currentPodcastAudio.load();
 
